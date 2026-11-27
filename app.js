@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '14';
+const BUILD = '15';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -96,7 +96,7 @@ const fail = (error) => { if (error) { const m = (error.message || '').trim(); t
 async function logout() {
   try { await disablePush(); } catch {}
   teardownRealtime(); await sb.auth.signOut();
-  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; render();
+  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; S.isTeacher = false; S.view = null; S.qs = null; render();
 }
 
 // ---------- helpers ----------
@@ -220,6 +220,7 @@ async function markRead(other) {
 // ---------- views ----------
 function render() {
   if (!S.me) return renderAuth();
+  if (S.view === 'quran' && !S.cur) return renderQuran();
   S.cur ? renderChat() : renderList();
 }
 
@@ -254,7 +255,88 @@ function renderAuth(mode = 'login') {
   if (mode === 'login') { const fb = document.createElement('button'); fb.className = 'link'; fb.textContent = 'نسيت كلمة السر؟'; fb.onclick = renderRecover; document.getElementById('sw').after(fb); }
 }
 
-function renderListIf() { if (!S.cur && S.me) renderList(); }
+// ---------- منصة القرآن: خريطة الحفظ ----------
+const QST = { memorized: ['محفوظ', '#16a34a'], learning: ['بيحفظ', '#f59e0b'], revision: ['محتاج مراجعة', '#dc2626'] };
+const arN = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+async function loadSurahs() {
+  if (S.qs) return S.qs;
+  const { data, error } = await sb.from('quran_surahs').select('num,name_ar,name_en,ayahs').order('num');
+  if (error) throw new Error('server'); S.qs = data; return data;
+}
+async function renderQuran() {
+  S.view = 'quran';
+  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">→</button><h2>منصة القرآن<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة حفظك'}</small></h2></div><div class="wrap" id="qbody"><div class="empty">لحظة…</div></div></div>`;
+  document.getElementById('qback').onclick = () => { S.view = null; render(); };
+  try { await loadSurahs(); } catch { document.getElementById('qbody').innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
+  if (S.isTeacher) teacherHome(); else studentProgress(S.me.id, S.me.name, false);
+}
+const pctOf = (n) => (n * 100 / 6236);
+const pctTxt = (n) => arN(pctOf(n).toFixed(1)) + '٪';
+async function teacherHome(page = 20) {
+  const box = document.getElementById('qbody'); if (!box) return;
+  const { data, error } = await sb.rpc('students_overview');
+  if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  const rows = data.slice(0, page).map((s) => `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
+    <div class="ls">${esc(s.wanas_id)} · محفوظ ${pctTxt(s.memorized)}${s.revision ? ' · مراجعة ' + arN(s.revision) + ' آية' : ''}</div>
+    <div class="qbar">${pbar(s.memorized, s.learning, s.revision, 6236)}</div></div></div>`).join('');
+  box.innerHTML = `<div class="list">${rows || '<div class="empty">لسه مفيش طلاب. دوس على ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}${data.length > page ? `<button class="btn sec" id="more" style="margin:10px">عرض الباقي (${arN(data.length - page)})</button>` : ''}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
+  box.querySelectorAll('.row').forEach((r) => (r.onclick = () => studentProgress(r.dataset.id, r.dataset.n, true)));
+  const mb = box.querySelector('#more'); if (mb) mb.onclick = () => teacherHome(page + 20);
+  box.querySelector('#qadd').onclick = addStudentSheet;
+}
+function pbar(m, l, r, tot) {
+  const w = (x) => (x * 100 / tot).toFixed(2) + '%';
+  return `<div style="display:flex;height:7px;border-radius:5px;background:#e9e3f7;overflow:hidden"><i style="width:${w(m)};background:${QST.memorized[1]}"></i><i style="width:${w(l)};background:${QST.learning[1]}"></i><i style="width:${w(r)};background:${QST.revision[1]}"></i></div>`;
+}
+function addStudentSheet() {
+  const s = sheet(`<h3>إضافة طالب</h3><label class="field"><span>ونس ID بتاع الطالب (لازم يكون عامل حساب)</span><input id="sid" dir="ltr" autocapitalize="none" spellcheck="false"></label><div class="err" id="aerr"></div><button class="btn" id="go">إضافة</button>`);
+  s.querySelector('#go').onclick = async () => {
+    const e = s.querySelector('#aerr'); e.textContent = '';
+    const { error } = await sb.rpc('enroll_student', { p_wanas_id: s.querySelector('#sid').value });
+    if (error) { e.textContent = /not_found/.test(error.message) ? 'مفيش حد بالـ ID ده' : /self/.test(error.message) ? 'ده الـ ID بتاعك' : 'مقدرتش أضيفه'; return; }
+    s.remove(); teacherHome();
+  };
+}
+async function studentProgress(sid, name, teacher) {
+  const box = document.getElementById('qbody'); if (!box) return;
+  box.innerHTML = '<div class="empty">لحظة…</div>';
+  const { data, error } = await sb.rpc('progress_summary', { p_student: sid });
+  if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل التقدم</div>'; return; }
+  const per = {}; let tm = 0, tl = 0, tr = 0;
+  for (const r of data) { (per[r.surah] = per[r.surah] || {})[r.status] = r.cnt; if (r.status === 'memorized') tm += r.cnt; else if (r.status === 'learning') tl += r.cnt; else tr += r.cnt; }
+  const surahs = S.qs.map((q) => { const p = per[q.num] || {}; return `<div class="row qs" data-n="${q.num}"><div class="mid"><div class="nm">${arN(q.num)}. ${esc(q.name_ar)}</div><div class="ls">${arN(q.ayahs)} آية${p.memorized ? ' · محفوظ ' + arN(p.memorized) : ''}${p.learning ? ' · بيحفظ ' + arN(p.learning) : ''}${p.revision ? ' · مراجعة ' + arN(p.revision) : ''}</div><div class="qbar">${pbar(p.memorized || 0, p.learning || 0, p.revision || 0, q.ayahs)}</div></div></div>`; }).join('');
+  box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? '<button class="ib" id="sback" style="color:var(--v)">→</button>' : ''}<b style="font-size:18px">${esc(name)}</b></div>
+    <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--v)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
+    <div class="list">${surahs}</div>`;
+  if (teacher) box.querySelector('#sback').onclick = teacherHome;
+  box.querySelectorAll('.qs').forEach((r) => (r.onclick = () => surahSheet(sid, name, teacher, +r.dataset.n)));
+}
+async function surahSheet(sid, name, teacher, num) {
+  const q = S.qs.find((x) => x.num === num);
+  const { data, error } = await sb.from('quran_progress').select('ayah,status').eq('student_id', sid).eq('surah', num).limit(300);
+  if (error) return toast('مقدرتش أحمّل السورة');
+  const st = {}; for (const r of data) st[r.ayah] = r.status;
+  let cells = ''; for (let a = 1; a <= q.ayahs; a++) { const c = st[a] ? QST[st[a]][1] : '#e9e3f7'; cells += `<span style="display:inline-block;min-width:30px;text-align:center;padding:4px 2px;margin:2px;border-radius:6px;font-size:12px;background:${c};color:${st[a] ? '#fff' : '#444'}">${arN(a)}</span>`; }
+  const s = sheet(`<h3>${esc(q.name_ar)} · ${arN(q.ayahs)} آية</h3><div style="max-height:34vh;overflow:auto;direction:rtl">${cells}</div>
+    ${teacher ? `<div style="display:flex;gap:8px;align-items:center;margin:12px 0"><label style="flex:1">من آية<input id="rf" type="number" min="1" max="${q.ayahs}" value="1" style="width:100%"></label><label style="flex:1">لآية<input id="rt" type="number" min="1" max="${q.ayahs}" value="${q.ayahs}" style="width:100%"></label></div>
+    <div class="err" id="aerr"></div>
+    <button class="btn" data-s="memorized" style="background:${QST.memorized[1]}">محفوظ</button>
+    <button class="btn" data-s="learning" style="background:${QST.learning[1]}">بيحفظ</button>
+    <button class="btn" data-s="revision" style="background:${QST.revision[1]}">محتاج مراجعة</button>
+    <button class="btn sec" data-s="none">مسح الحالة</button>` : '<p style="color:var(--mu)">الأخضر محفوظ، البرتقالي بيحفظ، الأحمر مراجعة.</p>'}
+    <button class="btn sec" id="cl">قفل</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
+  s.querySelectorAll('[data-s]').forEach((b) => (b.onclick = async () => {
+    const f = +s.querySelector('#rf').value, t = +s.querySelector('#rt').value, e = s.querySelector('#aerr');
+    if (!(f >= 1 && t <= q.ayahs && f <= t)) { e.textContent = 'المدى غلط (١ لـ ' + arN(q.ayahs) + ')'; return; }
+    const { error } = await sb.rpc('set_progress', { p_student: sid, p_surah: num, p_from: f, p_to: t, p_status: b.dataset.s });
+    if (error) { e.textContent = 'مقدرتش أحفظ'; return; }
+    s.remove(); studentProgress(sid, name, true).then(() => surahSheet(sid, name, true, num));
+  }));
+}
+
+function renderListIf() { if (!S.cur && S.me && S.view !== 'quran') renderList(); }
 function renderList() {
   const rows = S.contacts.map((c) => `
     <div class="row" data-id="${c.id}">
@@ -265,7 +347,7 @@ function renderList() {
   $app.innerHTML = `
   <div class="screen">
     <div class="top"><h2>ونس<small id="conn"></small></h2>
-      <button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
+      <button class="ib" id="qb" title="منصة القرآن">📖</button><button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
     <div class="wrap">
       <div class="list">${rows || '<div class="empty">لسه معندكش محادثات.<br>دوس على <b>＋</b> وضيف حد بالـ ونس ID بتاعه.</div>'}</div>
       <button class="fab" id="add" title="إضافة جهة اتصال">＋</button>
@@ -275,6 +357,7 @@ function renderList() {
   document.querySelectorAll('.row').forEach((r) => (r.onclick = () => openChat(r.dataset.id)));
   document.getElementById('add').onclick = addSheet;
   document.getElementById('me').onclick = profileSheet;
+  document.getElementById('qb').onclick = renderQuran;
   pushBanner();
 }
 function updateConn() { const el = document.getElementById('conn'); if (el) el.textContent = S.wsOk ? '' : 'بيتصل…'; const b = document.getElementById('connbar'); if (b) b.classList.toggle('hidden', S.wsOk); }
@@ -916,7 +999,7 @@ async function initPush() {
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
-  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); await loadBlocks(); render();
+  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; S.isTeacher = (await sb.rpc('is_teacher')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); await loadBlocks(); render();
   initPush();
   const qp = new URLSearchParams(location.search), q = qp.get('chat'), qc = qp.get('call');
   if (q || qc) { history.replaceState(null, '', location.pathname); if (qc) ringFromPush(qc, q); else openFromPush(q); }
