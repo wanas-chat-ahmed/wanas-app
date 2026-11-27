@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '18';
+const BUILD = '19';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -96,7 +96,7 @@ const fail = (error) => { if (error) { const m = (error.message || '').trim(); t
 async function logout() {
   try { await disablePush(); } catch {}
   teardownRealtime(); await sb.auth.signOut();
-  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; S.isTeacher = false; S.view = null; S.qs = null; render();
+  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; S.isTeacher = false; S.view = null; S.qs = null; S.subs = null; S.sub = null; render();
 }
 
 // ---------- helpers ----------
@@ -265,19 +265,65 @@ async function loadSurahs() {
 }
 async function renderQuran() {
   S.view = 'quran';
-  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">→</button><h2>منصة القرآن<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة حفظك'}</small></h2></div><div class="wrap" id="qbody"><div class="empty">لحظة…</div></div></div>`;
+  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">→</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="empty">لحظة…</div></div></div>`;
   document.getElementById('qback').onclick = () => { S.view = null; render(); };
-  try { await loadSurahs(); } catch { document.getElementById('qbody').innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
-  if (S.isTeacher) teacherHome(); else studentProgress(S.me.id, S.me.name, false);
+  try {
+    await loadSurahs();
+    let { data, error } = await sb.from('subjects').select('id,name,kind,teacher_id').order('id');
+    if (error) throw new Error('server');
+    if (S.isTeacher && !data.some((x) => x.kind === 'quran' && x.teacher_id === S.me.id)) { await sb.rpc('create_subject', { p_name: 'القرآن', p_kind: 'quran' }); ({ data } = await sb.from('subjects').select('id,name,kind,teacher_id').order('id')); }
+    S.subs = data || [];
+  } catch { document.getElementById('qbody').innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
+  if (!S.subs.some((x) => x.id === S.sub)) S.sub = (S.subs[0] || {}).id;
+  subjectBar(); openSubject();
+}
+function subjectBar() {
+  const el = document.getElementById('qsubs'); if (!el) return;
+  if (!S.isTeacher && S.subs.length < 2) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0">${S.subs.map((x) => `<button class="qsub" data-id="${x.id}" style="border:0;border-radius:16px;padding:7px 14px;white-space:nowrap;background:${x.id === S.sub ? 'var(--v)' : '#ede7fb'};color:${x.id === S.sub ? '#fff' : 'var(--v)'}">${esc(x.name)}</button>`).join('')}${S.isTeacher ? '<button id="qnew" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700">＋ مادة</button>' : ''}</div>`;
+  el.querySelectorAll('.qsub').forEach((b) => (b.onclick = () => { S.sub = +b.dataset.id; S.qf = 'all'; subjectBar(); openSubject(); }));
+  const nb = el.querySelector('#qnew'); if (nb) nb.onclick = newSubjectSheet;
+}
+function curSub() { return (S.subs || []).find((x) => x.id === S.sub); }
+function openSubject() {
+  const sub = curSub(), box = document.getElementById('qbody'); if (!box) return;
+  if (!sub) { box.innerHTML = '<div class="empty">لسه مفيش مواد</div>'; return; }
+  if (S.isTeacher) { sub.kind === 'quran' ? teacherHome() : genericHome(sub); return; }
+  if (sub.kind === 'quran') studentProgress(S.me.id, S.me.name, false);
+  else box.innerHTML = `<div class="empty"><b style="font-size:18px">${esc(sub.name)}</b><br>المنهج والمتابعة بتاعة المادة دي هتظهر هنا قريباً.</div>`;
+}
+function newSubjectSheet() {
+  const s = sheet(`<h3>مادة جديدة</h3><label class="field"><span>اسم المادة (مثلاً: English)</span><input id="sn" maxlength="40"></label>
+    <label class="field"><span>النوع</span><select id="sk"><option value="generic">مادة عامة (دروس وتقييمات)</option><option value="quran">قرآن (خريطة حفظ وتسميع)</option></select></label>
+    <div class="err" id="aerr"></div><button class="btn" id="go">إنشاء</button><button class="btn sec" id="cl">إلغاء</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
+  s.querySelector('#go').onclick = async () => {
+    const n = s.querySelector('#sn').value.trim(), e = s.querySelector('#aerr'); if (!n) { e.textContent = 'اكتب اسم المادة'; return; }
+    const { data, error } = await sb.rpc('create_subject', { p_name: n, p_kind: s.querySelector('#sk').value });
+    if (error) { e.textContent = /duplicate|unique/i.test(error.message) ? 'المادة دي موجودة' : 'مقدرتش أنشئ المادة'; return; }
+    const r = await sb.from('subjects').select('id,name,kind,teacher_id').order('id'); S.subs = r.data || S.subs; S.sub = data; s.remove(); subjectBar(); openSubject();
+  };
+}
+async function enrolledIds(subId) { const { data } = await sb.from('subject_students').select('student_id').eq('subject_id', subId); return new Set((data || []).map((x) => x.student_id)); }
+async function genericHome(sub) {
+  const box = document.getElementById('qbody'); if (!box) return;
+  const [ov, en] = await Promise.all([sb.rpc('students_overview'), enrolledIds(sub.id)]);
+  if (ov.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  S.qw = {}; for (const x of ov.data) S.qw[x.id] = x.wanas_id;
+  const list = ov.data.filter((x) => en.has(x.id));
+  box.innerHTML = `<div style="padding:12px 14px"><b style="font-size:18px">${esc(sub.name)}</b><div style="color:var(--mu);font-size:14px;margin-top:4px">طلاب المادة (${arN(list.length)}). المنهج والتقييمات بتاعة المادة هتتضاف قريباً.</div></div>
+    <div class="list">${list.map((s) => `<div class="row" data-id="${s.id}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div><div class="ls">${esc(s.wanas_id)}</div></div><button class="btn" data-chat="${s.id}" style="width:auto;padding:6px 12px;margin:0">💬</button></div>`).join('') || '<div class="empty">لسه مفيش طلاب في المادة دي. دوس ＋ وضيف طالب.</div>'}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
+  box.querySelectorAll('[data-chat]').forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); S.view = null; openChat(b.dataset.chat); }));
+  box.querySelector('#qadd').onclick = addStudentSheet;
 }
 const pctOf = (n) => (n * 100 / 6236);
 const pctTxt = (n) => arN(pctOf(n).toFixed(1)) + '٪';
 async function teacherHome(page = 20) {
   const box = document.getElementById('qbody'); if (!box) return;
-  const [ov, db] = await Promise.all([sb.rpc('students_overview'), sb.rpc('teacher_dashboard')]);
+  const [ov, db, en] = await Promise.all([sb.rpc('students_overview'), sb.rpc('teacher_dashboard'), enrolledIds(S.sub)]);
   if (ov.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
   const dm = {}; for (const x of db.data || []) dm[x.id] = x;
-  const all = ov.data.map((x) => ({ ...x, ...(dm[x.id] || {}), memorized: x.memorized }));
+  const all = ov.data.filter((x) => en.has(x.id)).map((x) => ({ ...x, ...(dm[x.id] || {}), memorized: x.memorized }));
   const late = (x) => x.days_since == null || x.days_since >= 7, due = (x) => (x.due_ayahs || 0) > 0;
   const nLate = all.filter(late).length, nDue = all.filter(due).length, tot = all.reduce((a, x) => a + x.memorized, 0);
   const f = S.qf || 'all', data = f === 'late' ? all.filter(late) : f === 'due' ? all.filter(due) : all;
@@ -303,9 +349,10 @@ function addStudentSheet() {
   const s = sheet(`<h3>إضافة طالب</h3><label class="field"><span>ونس ID بتاع الطالب (لازم يكون عامل حساب)</span><input id="sid" dir="ltr" autocapitalize="none" spellcheck="false"></label><div class="err" id="aerr"></div><button class="btn" id="go">إضافة</button>`);
   s.querySelector('#go').onclick = async () => {
     const e = s.querySelector('#aerr'); e.textContent = '';
-    const { error } = await sb.rpc('enroll_student', { p_wanas_id: s.querySelector('#sid').value });
+    const { data: er, error } = await sb.rpc('enroll_student', { p_wanas_id: s.querySelector('#sid').value });
     if (error) { e.textContent = /not_found/.test(error.message) ? 'مفيش حد بالـ ID ده' : /self/.test(error.message) ? 'ده الـ ID بتاعك' : 'مقدرتش أضيفه'; return; }
-    s.remove(); teacherHome();
+    if (S.sub) await sb.rpc('subject_enroll', { p_subject: S.sub, p_student: er.id });
+    s.remove(); openSubject();
   };
 }
 async function studentProgress(sid, name, teacher) {
@@ -419,7 +466,7 @@ function renderList() {
   $app.innerHTML = `
   <div class="screen">
     <div class="top"><h2>ونس<small id="conn"></small></h2>
-      <button class="ib" id="qb" title="منصة القرآن">📖</button><button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
+      <button class="ib" id="qb" title="المنصة التعليمية">🎓</button><button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
     <div class="wrap">
       <div class="list">${rows || '<div class="empty">لسه معندكش محادثات.<br>دوس على <b>＋</b> وضيف حد بالـ ونس ID بتاعه.</div>'}</div>
       <button class="fab" id="add" title="إضافة جهة اتصال">＋</button>
