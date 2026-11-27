@@ -2,7 +2,11 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '19';
+const BUILD = '20';
+(() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
+const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
+IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
+
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -265,7 +269,7 @@ async function loadSurahs() {
 }
 async function renderQuran() {
   S.view = 'quran';
-  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">→</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="empty">لحظة…</div></div></div>`;
+  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">${IC('back')}</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div></div>`;
   document.getElementById('qback').onclick = () => { S.view = null; render(); };
   try {
     await loadSurahs();
@@ -280,7 +284,7 @@ async function renderQuran() {
 function subjectBar() {
   const el = document.getElementById('qsubs'); if (!el) return;
   if (!S.isTeacher && S.subs.length < 2) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0">${S.subs.map((x) => `<button class="qsub" data-id="${x.id}" style="border:0;border-radius:16px;padding:7px 14px;white-space:nowrap;background:${x.id === S.sub ? 'var(--v)' : '#ede7fb'};color:${x.id === S.sub ? '#fff' : 'var(--v)'}">${esc(x.name)}</button>`).join('')}${S.isTeacher ? '<button id="qnew" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700">＋ مادة</button>' : ''}</div>`;
+  el.innerHTML = `<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0">${S.subs.map((x) => `<button class="qsub" data-id="${x.id}" style="border:0;border-radius:16px;padding:7px 14px;white-space:nowrap;background:${x.id === S.sub ? 'var(--v)' : 'var(--chip)'};color:${x.id === S.sub ? '#fff' : 'var(--v)'}">${esc(x.name)}</button>`).join('')}${S.isTeacher ? '<button id="qnew" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700">＋ مادة</button>' : ''}</div>`;
   el.querySelectorAll('.qsub').forEach((b) => (b.onclick = () => { S.sub = +b.dataset.id; S.qf = 'all'; subjectBar(); openSubject(); }));
   const nb = el.querySelector('#qnew'); if (nb) nb.onclick = newSubjectSheet;
 }
@@ -290,7 +294,7 @@ function openSubject() {
   if (!sub) { box.innerHTML = '<div class="empty">لسه مفيش مواد</div>'; return; }
   if (S.isTeacher) { sub.kind === 'quran' ? teacherHome() : genericHome(sub); return; }
   if (sub.kind === 'quran') studentProgress(S.me.id, S.me.name, false);
-  else box.innerHTML = `<div class="empty"><b style="font-size:18px">${esc(sub.name)}</b><br>المنهج والمتابعة بتاعة المادة دي هتظهر هنا قريباً.</div>`;
+  else sjStudent(sub, S.me.id, S.me.name, false);
 }
 function newSubjectSheet() {
   const s = sheet(`<h3>مادة جديدة</h3><label class="field"><span>اسم المادة (مثلاً: English)</span><input id="sn" maxlength="40"></label>
@@ -305,16 +309,92 @@ function newSubjectSheet() {
   };
 }
 async function enrolledIds(subId) { const { data } = await sb.from('subject_students').select('student_id').eq('subject_id', subId); return new Set((data || []).map((x) => x.student_id)); }
-async function genericHome(sub) {
+// ---------- المواد العامة (English وغيره): منهج، مفردات، جلسات، تقدم ----------
+const SJS = { todo: ['لسه', '#9ca3af'], learning: ['بيتعلم', '#f59e0b'], done: ['خلص', '#16a34a'] };
+const SJV = { new: ['جديدة', '#9ca3af'], learning: ['بحفظها', '#f59e0b'], known: ['أعرفها', '#16a34a'] };
+const sjNext = (m, k) => { const ks = Object.keys(m); return ks[(ks.indexOf(k) + 1) % ks.length]; };
+const sjTab = (t, k, on) => `<button class="sjt" data-t="${k}" style="flex:1;border:0;border-radius:14px;padding:8px 4px;font-size:14px;background:${on ? 'var(--v)' : 'var(--chip)'};color:${on ? '#fff' : 'var(--v)'}">${t}</button>`;
+const sjBadge = (m, k) => `<span style="display:inline-block;border-radius:10px;padding:2px 9px;font-size:12px;color:#fff;background:${m[k][1]}">${m[k][0]}</span>`;
+async function genericHome(sub, tab = 'students') {
   const box = document.getElementById('qbody'); if (!box) return;
-  const [ov, en] = await Promise.all([sb.rpc('students_overview'), enrolledIds(sub.id)]);
-  if (ov.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الطلاب', 'students', tab === 'students')}${sjTab('المنهج', 'lesson', tab === 'lesson')}${sjTab('القواعد', 'grammar', tab === 'grammar')}</div>`;
+  const bind = () => box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => genericHome(sub, b.dataset.t)));
+  if (tab !== 'students') {
+    const { data, error } = await sb.from('sj_lessons').select('id,kind,level,title,body,position').eq('subject_id', sub.id).eq('kind', tab).order('level').order('position').order('id');
+    if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل المنهج</div>'; return; }
+    const lv = {}; for (const l of data) (lv[l.level || 'بدون مستوى'] ||= []).push(l);
+    box.innerHTML = `${tabs}<div style="padding:8px 14px 80px">${Object.keys(lv).map((k) => `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${esc(k)}</div>${lv[k].map((l) => `<div class="row sjl" data-id="${l.id}"><div class="mid"><div class="nm">${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div></div>`).join('')}`).join('') || `<div class="empty">لسه مفيش ${tab === 'lesson' ? 'دروس' : 'مواضيع قواعد'}. دوس ＋ وضيف.</div>`}</div><button class="fab" id="sjadd">${IC('plus')}</button>`;
+    bind();
+    const form = (l) => { const s = sheet(`<h3>${l ? 'تعديل' : tab === 'lesson' ? 'درس جديد' : 'موضوع قواعد جديد'}</h3><label class="field"><span>المستوى (مثلاً A1)</span><input id="lv" maxlength="20" value="${esc(l ? l.level : '')}"></label><label class="field"><span>العنوان</span><input id="lt" maxlength="120" value="${esc(l ? l.title : '')}"></label><label class="field"><span>المحتوى / ملاحظات</span><textarea id="lb" rows="4" maxlength="4000" style="width:100%">${esc(l ? l.body || '' : '')}</textarea></label><div class="err" id="aerr"></div><button class="btn" id="go">حفظ</button>${l ? '<button class="btn sec" id="del" style="color:#dc2626">حذف</button>' : ''}<button class="btn sec" id="cl">إلغاء</button>`);
+      s.querySelector('#cl').onclick = () => s.remove();
+      const dl = s.querySelector('#del'); if (dl) dl.onclick = async () => { if (!confirm('تحذف؟ تقدّم الطلاب فيه هيتمسح.')) return; await sb.rpc('delete_lesson', { p_id: l.id }); s.remove(); genericHome(sub, tab); };
+      s.querySelector('#go').onclick = async () => { const t = s.querySelector('#lt').value.trim(); if (!t) { s.querySelector('#aerr').textContent = 'اكتب العنوان'; return; }
+        const a = { p_level: s.querySelector('#lv').value, p_title: t, p_body: s.querySelector('#lb').value };
+        const r = l ? await sb.rpc('update_lesson', { p_id: l.id, ...a }) : await sb.rpc('add_lesson', { p_subject: sub.id, p_kind: tab, ...a });
+        if (r.error) { s.querySelector('#aerr').textContent = 'مقدرتش أحفظ'; return; } s.remove(); genericHome(sub, tab); };
+    };
+    box.querySelector('#sjadd').onclick = () => form(null);
+    box.querySelectorAll('.sjl').forEach((r) => (r.onclick = () => form(data.find((x) => x.id == r.dataset.id))));
+    return;
+  }
+  const [ov, en, od] = await Promise.all([sb.rpc('students_overview'), enrolledIds(sub.id), sb.rpc('sj_overview', { p_subject: sub.id })]);
+  if (ov.error || od.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  const om = {}; for (const x of od.data) om[x.id] = x;
   S.qw = {}; for (const x of ov.data) S.qw[x.id] = x.wanas_id;
   const list = ov.data.filter((x) => en.has(x.id));
-  box.innerHTML = `<div style="padding:12px 14px"><b style="font-size:18px">${esc(sub.name)}</b><div style="color:var(--mu);font-size:14px;margin-top:4px">طلاب المادة (${arN(list.length)}). المنهج والتقييمات بتاعة المادة هتتضاف قريباً.</div></div>
-    <div class="list">${list.map((s) => `<div class="row" data-id="${s.id}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div><div class="ls">${esc(s.wanas_id)}</div></div><button class="btn" data-chat="${s.id}" style="width:auto;padding:6px 12px;margin:0">💬</button></div>`).join('') || '<div class="empty">لسه مفيش طلاب في المادة دي. دوس ＋ وضيف طالب.</div>'}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
+  const late = (x) => !x || x.days_since == null || x.days_since >= 7;
+  box.innerHTML = `${tabs}<div class="list">${list.map((s) => { const o = om[s.id] || {}; return `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
+    <div class="ls">دروس ${arN(o.lessons_done || 0)}/${arN(o.lessons_total || 0)} · كلمات ${arN(o.vocab_known || 0)}/${arN(o.vocab_total || 0)}${o.avg_grade != null ? ' · متوسط ' + arN(Number(o.avg_grade).toFixed(1)) + '/١٠' : ''}</div>
+    <div style="font-size:12px;color:${late(o) ? '#dc2626' : 'var(--mu)'}">${o.days_since == null ? 'لسه مفيش جلسة' : o.days_since === 0 ? 'جلسة النهارده' : 'آخر جلسة من ' + arN(o.days_since) + ' يوم'}</div></div><button class="btn" data-chat="${s.id}" style="width:auto;padding:6px 12px;margin:0;display:inline-flex;align-items:center">${IC('chat')}</button></div>`; }).join('') || '<div class="empty">لسه مفيش طلاب في المادة دي. دوس ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}</div><button class="fab" id="qadd" title="إضافة طالب">${IC('plus')}</button>`;
+  bind();
   box.querySelectorAll('[data-chat]').forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); S.view = null; openChat(b.dataset.chat); }));
+  box.querySelectorAll('.row').forEach((r) => (r.onclick = () => sjStudent(sub, r.dataset.id, r.dataset.n, true)));
   box.querySelector('#qadd').onclick = addStudentSheet;
+}
+async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
+  const box = document.getElementById('qbody'); if (!box) return;
+  const back = teacher ? `<button class="btn sec" id="sjb" style="margin:10px 14px 0;width:auto;padding:6px 14px;display:inline-flex;align-items:center;gap:4px">${IC('back')} الطلاب</button>` : '';
+  const [ls, pg, vc, ss] = await Promise.all([
+    sb.from('sj_lessons').select('id,kind,level,title,body').eq('subject_id', sub.id).order('level').order('position').order('id'),
+    sb.from('sj_progress').select('lesson_id,status').eq('subject_id', sub.id).eq('student_id', sid),
+    sb.from('sj_vocab').select('id,word,meaning,example,status').eq('subject_id', sub.id).eq('student_id', sid).order('id', { ascending: false }),
+    sb.from('sj_sessions').select('id,session_date,topic,grade,notes').eq('subject_id', sub.id).eq('student_id', sid).order('session_date', { ascending: false }).order('id', { ascending: false })]);
+  if (ls.error || pg.error || vc.error || ss.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات</div>'; return; }
+  const st = {}; for (const p of pg.data) st[p.lesson_id] = p.status;
+  const done = ls.data.filter((l) => st[l.id] === 'done').length, known = vc.data.filter((v) => v.status === 'known').length;
+  const gs = ss.data.filter((x) => x.grade != null), avg = gs.length ? gs.reduce((a, x) => a + x.grade, 0) / gs.length : null;
+  const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الدروس', 'lessons', tab === 'lessons')}${sjTab('المفردات', 'vocab', tab === 'vocab')}${sjTab('الجلسات', 'sessions', tab === 'sessions')}</div>`;
+  const stats = `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">دروس ${arN(done)}/${arN(ls.data.length)} · كلمات ${arN(known)}/${arN(vc.data.length)} · جلسات ${arN(ss.data.length)}${avg != null ? ' · متوسط ' + arN(avg.toFixed(1)) + '/١٠' : ''}</div></div>`;
+  let body = '', fab = '';
+  if (tab === 'lessons') {
+    const kinds = [['lesson', 'الدروس'], ['grammar', 'القواعد']];
+    body = kinds.map(([k, t]) => { const a = ls.data.filter((l) => l.kind === k); if (!a.length) return ''; return `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${t}</div>` + a.map((l) => { const s = st[l.id] || 'todo'; return `<div class="row sjls" data-id="${l.id}" data-s="${s}"><div class="mid"><div class="nm">${l.level ? `<small style="color:var(--mu)">${esc(l.level)} · </small>` : ''}${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div>${sjBadge(SJS, s)}</div>`; }).join(''); }).join('') || '<div class="empty">المدرّس لسه مضافش دروس</div>';
+  } else if (tab === 'vocab') {
+    body = vc.data.map((v) => `<div class="row sjv" data-id="${v.id}" data-s="${v.status}"><div class="mid"><div class="nm" dir="auto">${esc(v.word)}${v.meaning ? ` <small style="color:var(--mu)">— ${esc(v.meaning)}</small>` : ''}</div>${v.example ? `<div class="ls" dir="auto">${esc(v.example)}</div>` : ''}</div>${sjBadge(SJV, v.status)}${teacher ? `<button class="ib sjvd" data-id="${v.id}" style="margin-inline-start:6px;color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش كلمات</div>';
+    if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
+  } else {
+    body = ss.data.map((x) => `<div class="row"><div class="mid"><div class="nm">${esc(x.topic)}${x.grade != null ? ` <b style="color:var(--vt)">${arN(x.grade)}/١٠</b>` : ''}</div><div class="ls">${arN(x.session_date)}</div>${x.notes ? `<div style="font-size:13px;margin-top:2px;white-space:pre-wrap" dir="auto">${esc(x.notes)}</div>` : ''}</div>${teacher ? `<button class="ib sjsd" data-id="${x.id}" style="color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش جلسات</div>';
+    if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
+  }
+  box.innerHTML = `${back}${stats}${tabs}<div style="padding:4px 14px 80px">${body}</div>${fab}`;
+  const re = (t) => sjStudent(sub, sid, name, teacher, t || tab);
+  box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => re(b.dataset.t)));
+  const bk = box.querySelector('#sjb'); if (bk) bk.onclick = () => genericHome(sub);
+  if (teacher) box.querySelectorAll('.sjls').forEach((r) => (r.onclick = async () => { const n = sjNext(SJS, r.dataset.s); const e = await sb.rpc('set_lesson_status', { p_student: sid, p_lesson: +r.dataset.id, p_status: n }); if (e.error) toast('مقدرتش أحدّث'); re(); }));
+  box.querySelectorAll('.sjv').forEach((r) => (r.onclick = async () => { const e = await sb.rpc('set_vocab_status', { p_id: +r.dataset.id, p_status: sjNext(SJV, r.dataset.s) }); if (e.error) toast('مقدرتش أحدّث'); re(); }));
+  box.querySelectorAll('.sjvd').forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); if (!confirm('تحذف الكلمة؟')) return; await sb.rpc('delete_vocab', { p_id: +b.dataset.id }); re(); }));
+  box.querySelectorAll('.sjsd').forEach((b) => (b.onclick = async () => { if (!confirm('تحذف الجلسة؟')) return; await sb.rpc('delete_sj_session', { p_id: +b.dataset.id }); re(); }));
+  const ad = box.querySelector('#sjadd'); if (!ad) return;
+  ad.onclick = () => {
+    if (tab === 'vocab') { const s = sheet(`<h3>كلمة جديدة</h3><label class="field"><span>الكلمة</span><input id="w" dir="ltr" maxlength="80"></label><label class="field"><span>المعنى</span><input id="m" maxlength="120"></label><label class="field"><span>مثال</span><input id="x" dir="ltr" maxlength="200"></label><div class="err" id="aerr"></div><button class="btn" id="go">إضافة</button><button class="btn sec" id="cl">إلغاء</button>`);
+      s.querySelector('#cl').onclick = () => s.remove();
+      s.querySelector('#go').onclick = async () => { const w = s.querySelector('#w').value.trim(); if (!w) { s.querySelector('#aerr').textContent = 'اكتب الكلمة'; return; } const r = await sb.rpc('add_vocab', { p_subject: sub.id, p_student: sid, p_word: w, p_meaning: s.querySelector('#m').value, p_example: s.querySelector('#x').value }); if (r.error) { s.querySelector('#aerr').textContent = 'مقدرتش أضيف'; return; } s.remove(); re(); }; }
+    else { const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const s = sheet(`<h3>جلسة جديدة</h3><label class="field"><span>التاريخ</span><input id="d" type="date" value="${today}"></label><label class="field"><span>الموضوع</span><input id="t" maxlength="120"></label><label class="field"><span>الدرجة (٠ - ١٠، اختياري)</span><input id="g" type="number" min="0" max="10" inputmode="numeric"></label><label class="field"><span>ملاحظات</span><textarea id="n" rows="3" maxlength="2000" style="width:100%"></textarea></label><div class="err" id="aerr"></div><button class="btn" id="go">حفظ</button><button class="btn sec" id="cl">إلغاء</button>`);
+      s.querySelector('#cl').onclick = () => s.remove();
+      s.querySelector('#go').onclick = async () => { const t = s.querySelector('#t').value.trim(), gv = s.querySelector('#g').value; if (!t) { s.querySelector('#aerr').textContent = 'اكتب الموضوع'; return; } if (gv !== '' && (+gv < 0 || +gv > 10)) { s.querySelector('#aerr').textContent = 'الدرجة من ٠ لـ ١٠'; return; }
+        const r = await sb.rpc('add_sj_session', { p_subject: sub.id, p_student: sid, p_date: s.querySelector('#d').value || null, p_topic: t, p_grade: gv === '' ? null : Math.round(+gv), p_notes: s.querySelector('#n').value }); if (r.error) { s.querySelector('#aerr').textContent = 'مقدرتش أحفظ'; return; } s.remove(); re(); }; }
+  };
 }
 const pctOf = (n) => (n * 100 / 6236);
 const pctTxt = (n) => arN(pctOf(n).toFixed(1)) + '٪';
@@ -328,14 +408,14 @@ async function teacherHome(page = 20) {
   const nLate = all.filter(late).length, nDue = all.filter(due).length, tot = all.reduce((a, x) => a + x.memorized, 0);
   const f = S.qf || 'all', data = f === 'late' ? all.filter(late) : f === 'due' ? all.filter(due) : all;
   S.qw = {}; for (const x of all) S.qw[x.id] = x.wanas_id;
-  const chip = (k, t, on) => `<button class="qchip" data-f="${k}" style="border:0;border-radius:16px;padding:6px 12px;font-size:13px;background:${on ? 'var(--v)' : '#ede7fb'};color:${on ? '#fff' : 'var(--v)'}">${t}</button>`;
-  const head = all.length ? `<div style="padding:12px 14px 0"><div style="color:var(--mu);font-size:13px">متوسط الحفظ في كل الطلاب</div><div style="font-size:26px;font-weight:800;color:var(--v)">${arN((tot * 100 / (all.length * 6236)).toFixed(1))}٪ <small style="font-size:13px;font-weight:400;color:var(--mu)">(${arN(all.length)} طالب)</small></div>
+  const chip = (k, t, on) => `<button class="qchip" data-f="${k}" style="border:0;border-radius:16px;padding:6px 12px;font-size:13px;background:${on ? 'var(--v)' : 'var(--chip)'};color:${on ? '#fff' : 'var(--v)'}">${t}</button>`;
+  const head = all.length ? `<div style="padding:12px 14px 0"><div style="color:var(--mu);font-size:13px">متوسط الحفظ في كل الطلاب</div><div style="font-size:26px;font-weight:800;color:var(--vt)">${arN((tot * 100 / (all.length * 6236)).toFixed(1))}٪ <small style="font-size:13px;font-weight:400;color:var(--mu)">(${arN(all.length)} طالب)</small></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">${chip('all', 'الكل', f === 'all')}${chip('late', 'متأخرين ' + arN(nLate), f === 'late')}${chip('due', 'مراجعة مستحقة ' + arN(nDue), f === 'due')}</div></div>` : '';
   const rows = data.slice(0, page).map((s) => `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
     <div class="ls">${esc(s.wanas_id)} · محفوظ ${pctTxt(s.memorized)}${s.revision ? ' · مراجعة ' + arN(s.revision) + ' آية' : ''}</div>
     <div style="font-size:12px;margin:2px 0;color:${late(s) ? '#dc2626' : 'var(--mu)'}">${s.days_since == null ? 'لسه ماسمّعش' : s.days_since === 0 ? 'سمّع النهارده' : 'آخر تسميع من ' + arN(s.days_since) + ' يوم'}${due(s) ? ' · <b style="color:#dc2626">مراجعة مستحقة ' + arN(s.due_ayahs) + ' آية</b>' : ''}</div>
     <div class="qbar">${pbar(s.memorized, s.learning, s.revision, 6236)}</div></div></div>`).join('');
-  box.innerHTML = `${head}<div class="list">${rows || '<div class="empty">لسه مفيش طلاب. دوس على ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}${data.length > page ? `<button class="btn sec" id="more" style="margin:10px">عرض الباقي (${arN(data.length - page)})</button>` : ''}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
+  box.innerHTML = `${head}<div class="list">${rows || '<div class="empty">لسه مفيش طلاب. دوس على ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}${data.length > page ? `<button class="btn sec" id="more" style="margin:10px">عرض الباقي (${arN(data.length - page)})</button>` : ''}</div><button class="fab" id="qadd" title="إضافة طالب">${IC('plus')}</button>`;
   box.querySelectorAll('.row').forEach((r) => (r.onclick = () => studentProgress(r.dataset.id, r.dataset.n, true)));
   box.querySelectorAll('.qchip').forEach((c) => (c.onclick = () => { S.qf = c.dataset.f; teacherHome(); }));
   const mb = box.querySelector('#more'); if (mb) mb.onclick = () => teacherHome(page + 20);
@@ -343,7 +423,7 @@ async function teacherHome(page = 20) {
 }
 function pbar(m, l, r, tot) {
   const w = (x) => (x * 100 / tot).toFixed(2) + '%';
-  return `<div style="display:flex;height:7px;border-radius:5px;background:#e9e3f7;overflow:hidden"><i style="width:${w(m)};background:${QST.memorized[1]}"></i><i style="width:${w(l)};background:${QST.learning[1]}"></i><i style="width:${w(r)};background:${QST.revision[1]}"></i></div>`;
+  return `<div style="display:flex;height:7px;border-radius:5px;background:var(--trk);overflow:hidden"><i style="width:${w(m)};background:${QST.memorized[1]}"></i><i style="width:${w(l)};background:${QST.learning[1]}"></i><i style="width:${w(r)};background:${QST.revision[1]}"></i></div>`;
 }
 function addStudentSheet() {
   const s = sheet(`<h3>إضافة طالب</h3><label class="field"><span>ونس ID بتاع الطالب (لازم يكون عامل حساب)</span><input id="sid" dir="ltr" autocapitalize="none" spellcheck="false"></label><div class="err" id="aerr"></div><button class="btn" id="go">إضافة</button>`);
@@ -357,19 +437,19 @@ function addStudentSheet() {
 }
 async function studentProgress(sid, name, teacher) {
   const box = document.getElementById('qbody'); if (!box) return;
-  box.innerHTML = '<div class="empty">لحظة…</div>';
+  box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
   const { data, error } = await sb.rpc('progress_summary', { p_student: sid });
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل التقدم</div>'; return; }
   const per = {}; let tm = 0, tl = 0, tr = 0;
   for (const r of data) { (per[r.surah] = per[r.surah] || {})[r.status] = r.cnt; if (r.status === 'memorized') tm += r.cnt; else if (r.status === 'learning') tl += r.cnt; else tr += r.cnt; }
   const surahs = S.qs.map((q) => { const p = per[q.num] || {}; return `<div class="row qs" data-n="${q.num}"><div class="mid"><div class="nm">${arN(q.num)}. ${esc(q.name_ar)}</div><div class="ls">${arN(q.ayahs)} آية${p.memorized ? ' · محفوظ ' + arN(p.memorized) : ''}${p.learning ? ' · بيحفظ ' + arN(p.learning) : ''}${p.revision ? ' · مراجعة ' + arN(p.revision) : ''}</div><div class="qbar">${pbar(p.memorized || 0, p.learning || 0, p.revision || 0, q.ayahs)}</div></div></div>`; }).join('');
-  box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? '<button class="ib" id="sback" style="color:var(--v)">→</button>' : ''}<b style="font-size:18px;flex:1">${esc(name)}</b>${teacher ? '<button class="btn" id="schat" style="width:auto;padding:8px 16px;margin:0">💬 محادثة</button>' : ''}</div>
-    <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--v)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
+  box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? `<button class="ib" id="sback" style="color:var(--vt);background:var(--vl)">${IC('back')}</button>` : ''}<b style="font-size:18px;flex:1">${esc(name)}</b>${teacher ? `<button class="btn" id="schat" style="width:auto;padding:8px 16px;margin:0;display:inline-flex;align-items:center;gap:6px">${IC('chat')} محادثة</button>` : ''}</div>
+    <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--vt)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
     <div style="padding:0 14px 6px;display:flex;align-items:center"><b style="flex:1">جلسات التسميع</b>${teacher ? '<button class="btn" id="newrc" style="width:auto;padding:8px 16px;margin:0">＋ تسميع جديد</button>' : ''}</div>
-    <div id="rchist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
+    <div id="rchist" style="padding:0 14px 10px"><div class="sk" style="padding:4px 0"><i style="height:48px"></i></div></div>
     <div style="padding:0 14px 6px"><b>طابور المراجعة</b> <small style="color:var(--mu)">(محفوظ من أكتر من ٣٠ يوم ومتسمّعش)</small></div>
-    <div id="rqlist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
+    <div id="rqlist" style="padding:0 14px 10px"><div class="sk" style="padding:4px 0"><i style="height:48px"></i></div></div>
     <div style="padding:0 14px"><b>الخريطة</b></div>
     <div class="list">${surahs}</div>`;
   if (teacher) { box.querySelector('#schat').onclick = async () => {
@@ -388,7 +468,7 @@ async function loadRevision(sid) {
   if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل المراجعة</div>'; return; }
   if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">مفيش مراجعة مستحقة ✅</div>'; return; }
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
-  el.innerHTML = data.slice(0, 30).map((r) => `<div style="background:#fff3f3;border-radius:12px;padding:8px 12px;margin-bottom:6px;display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)} <small style="font-weight:400">(${arN(r.cnt)} آية)</small></b><span style="color:var(--mu);font-size:13px">من ${arN(Math.max(1, Math.round((Date.now() - new Date(r.since + 'T12:00:00')) / 86400000)))} يوم</span></div>`).join('') + (data.length > 30 ? '<div style="color:var(--mu);font-size:13px">وفيه غيرهم…</div>' : '') + '<div style="color:var(--mu);font-size:12px">لما تسمّع المدى ده في جلسة تسميع بيتشال من الطابور.</div>';
+  el.innerHTML = data.slice(0, 30).map((r) => `<div style="background:var(--revbg);border-radius:12px;padding:8px 12px;margin-bottom:6px;display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)} <small style="font-weight:400">(${arN(r.cnt)} آية)</small></b><span style="color:var(--mu);font-size:13px">من ${arN(Math.max(1, Math.round((Date.now() - new Date(r.since + 'T12:00:00')) / 86400000)))} يوم</span></div>`).join('') + (data.length > 30 ? '<div style="color:var(--mu);font-size:13px">وفيه غيرهم…</div>' : '') + '<div style="color:var(--mu);font-size:12px">لما تسمّع المدى ده في جلسة تسميع بيتشال من الطابور.</div>';
 }
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
 async function loadRecitations(sid, name, teacher, lim = 15) {
@@ -397,10 +477,10 @@ async function loadRecitations(sid, name, teacher, lim = 15) {
   if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل الجلسات</div>'; return; }
   if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">لسه مفيش جلسات تسميع</div>'; return; }
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
-  el.innerHTML = data.slice(0, lim).map((r) => `<div class="rcard" style="background:#f5f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+  el.innerHTML = data.slice(0, lim).map((r) => `<div class="rcard" style="background:var(--vl);border-radius:12px;padding:10px 12px;margin-bottom:8px">
     <div style="display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)}</b><span style="color:var(--mu);font-size:13px">${fmtDate(r.session_date)}</span></div>
     <div style="font-size:14px;margin-top:3px">${r.grade != null ? 'التقدير: <b>' + arN(r.grade) + '/١٠</b> · ' : ''}الأخطاء: <b>${arN(r.mistakes)}</b></div>
-    ${r.notes ? `<div style="font-size:14px;color:#444;margin-top:3px;white-space:pre-wrap">${esc(r.notes)}</div>` : ''}
+    ${r.notes ? `<div style="font-size:14px;color:var(--tx);opacity:.85;margin-top:3px;white-space:pre-wrap">${esc(r.notes)}</div>` : ''}
     ${teacher ? `<button class="link" data-del="${r.id}" style="margin:4px 0 0;color:#c0262d;font-size:13px">مسح</button>` : ''}</div>`).join('') + (data.length > lim ? '<button class="btn sec" id="rcmore" style="margin:0">عرض أقدم</button>' : '');
   el.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => { if (!confirm('تمسح الجلسة دي؟')) return; const { error } = await sb.rpc('delete_recitation', { p_id: +b.dataset.del }); if (error) return toast('مقدرتش أمسح'); loadRecitations(sid, name, teacher, lim); }));
   const m = el.querySelector('#rcmore'); if (m) m.onclick = () => loadRecitations(sid, name, teacher, lim + 15);
@@ -436,7 +516,7 @@ async function surahSheet(sid, name, teacher, num) {
   const { data, error } = await sb.from('quran_progress').select('ayah,status').eq('student_id', sid).eq('surah', num).limit(300);
   if (error) return toast('مقدرتش أحمّل السورة');
   const st = {}; for (const r of data) st[r.ayah] = r.status;
-  let cells = ''; for (let a = 1; a <= q.ayahs; a++) { const c = st[a] ? QST[st[a]][1] : '#e9e3f7'; cells += `<span style="display:inline-block;min-width:30px;text-align:center;padding:4px 2px;margin:2px;border-radius:6px;font-size:12px;background:${c};color:${st[a] ? '#fff' : '#444'}">${arN(a)}</span>`; }
+  let cells = ''; for (let a = 1; a <= q.ayahs; a++) { const c = st[a] ? QST[st[a]][1] : 'var(--trk)'; cells += `<span style="display:inline-block;min-width:30px;text-align:center;padding:4px 2px;margin:2px;border-radius:6px;font-size:12px;background:${c};color:${st[a] ? '#fff' : '#444'}">${arN(a)}</span>`; }
   const s = sheet(`<h3>${esc(q.name_ar)} · ${arN(q.ayahs)} آية</h3><div style="max-height:34vh;overflow:auto;direction:rtl">${cells}</div>
     ${teacher ? `<div style="display:flex;gap:8px;align-items:center;margin:12px 0"><label style="flex:1">من آية<input id="rf" type="number" min="1" max="${q.ayahs}" value="1" style="width:100%"></label><label style="flex:1">لآية<input id="rt" type="number" min="1" max="${q.ayahs}" value="${q.ayahs}" style="width:100%"></label></div>
     <div class="err" id="aerr"></div>
@@ -466,10 +546,10 @@ function renderList() {
   $app.innerHTML = `
   <div class="screen">
     <div class="top"><h2>ونس<small id="conn"></small></h2>
-      <button class="ib" id="qb" title="المنصة التعليمية">🎓</button><button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
+      <button class="ib" id="qb" title="المنصة التعليمية">${IC('cap')}</button><button class="ib" id="me" title="حسابي">${avatar(S.me, 'sm')}</button></div>
     <div class="wrap">
       <div class="list">${rows || '<div class="empty">لسه معندكش محادثات.<br>دوس على <b>＋</b> وضيف حد بالـ ونس ID بتاعه.</div>'}</div>
-      <button class="fab" id="add" title="إضافة جهة اتصال">＋</button>
+      <button class="fab" id="add" title="إضافة جهة اتصال">${IC('plus')}</button>
     </div>
   </div>`;
   updateConn();
@@ -605,7 +685,7 @@ async function contextSheet(id, mid, q) {
     sb.from('messages').select('id,from_id,kind,body,created_at').or(pair).gte('id', mid).order('id', { ascending: true }).limit(9)]);
   if (a.error || b.error) return toast('مقدرتش أفتح الرسالة');
   const list = [...(a.data || []).reverse(), ...(b.data || [])];
-  const s = sheet(`<h3>الرسالة في سياقها</h3><div class="ctxl" style="max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:4px;background:#f5f0ff;padding:10px;border-radius:12px">${list.map((m) => {
+  const s = sheet(`<h3>الرسالة في سياقها</h3><div class="ctxl" style="max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:4px;background:var(--vl);padding:10px;border-radius:12px">${list.map((m) => {
     const mine = m.from_id === me, txt = m.kind === 'text' ? esc(m.body) : m.kind === 'image' ? '📷 صورة' : m.kind === 'voice' ? '🎤 رسالة صوتية' : '📞 مكالمة';
     return `<div class="b ${mine ? 'me' : 'them'}" ${String(m.id) === String(mid) ? 'id="hit" style="outline:3px solid #ffb703"' : ''}>${txt}<div class="mt">${fmtDay(m.created_at)} ${fmtTime(m.created_at)}</div></div>`; }).join('')}</div>
     <button class="btn sec" id="cl" style="margin-top:10px">قفل</button>`);
@@ -738,14 +818,14 @@ function renderChat() {
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
-    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="srchb" title="بحث في المحادثة">🔍</button><button class="ib" id="callb" title="مكالمة صوتية">📞</button><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
+    <div class="top"><button class="ib" id="back">${IC('back')}</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="srchb" title="بحث في المحادثة">${IC('search')}</button><button class="ib" id="callb" title="مكالمة صوتية">${IC('phone')}</button><button class="ib" id="wpb" title="خلفية المحادثة">${IC('palette')}</button></div>
     <div class="conn ${S.wsOk ? 'hidden' : ''}" id="connbar">بيتصل بالسيرفر…</div>
     <div class="msgs" id="msgs"></div>
     <div class="bar">
-      <button class="attach" id="att" title="صورة">📷</button><input type="file" id="img" accept="image/*" class="hidden">
+      <button class="attach" id="att" title="صورة">${IC('cam')}</button><input type="file" id="img" accept="image/*" class="hidden">
       <textarea id="txt" rows="1" placeholder="اكتب رسالة…"></textarea>
-      <button class="attach" id="mic" title="رسالة صوتية">🎤</button>
-      <button class="send" id="snd">➤</button>
+      <button class="attach" id="mic" title="رسالة صوتية">${IC('mic')}</button>
+      <button class="send" id="snd">${IC('send')}</button>
     </div>
   </div>`;
   document.getElementById('back').onclick = () => { S.cur = null; renderList(); refreshContacts(); };
@@ -841,7 +921,7 @@ async function startRecording() {
   REC.saved = bar.innerHTML;
   bar.innerHTML = `<button class="attach" id="rcancel" title="إلغاء" style="color:#c0262d">✕</button>
     <div class="rec"><span class="rdot"></span><b id="rtime">0:00</b><small>بيسجّل… (أقصى مدة ${fmtDur(VOICE_MAX_MS)})</small></div>
-    <button class="send" id="rsend" title="إرسال">➤</button>`;
+    <button class="send" id="rsend" title="إرسال">${IC('send')}</button>`;
   document.getElementById('rcancel').onclick = () => stopRecording(true);
   document.getElementById('rsend').onclick = () => stopRecording(false);
   REC.timer = setInterval(() => {
@@ -919,7 +999,7 @@ function callUI() {
   if (!el) { el = document.createElement('div'); el.id = 'call'; el.className = 'callov'; document.body.appendChild(el); }
   const p = c.profile || { name: 'مكالمة واردة' };
   const btns = c.state === 'incoming'
-    ? `<button class="cb red" id="c-dec" title="رفض">✖</button><button class="cb grn" id="c-acc" title="رد">📞</button>`
+    ? `<button class="cb red" id="c-dec" title="رفض">✖</button><button class="cb grn" id="c-acc" title="رد">${IC('phone')}</button>`
     : `<button class="cb ${c.muted ? 'on' : ''}" id="c-mute" title="كتم">${c.muted ? '🔇' : '🎙️'}</button><button class="cb ${c.loud ? 'on' : ''}" id="c-spk" title="السماعة">🔊</button><button class="cb red" id="c-end" title="إنهاء">✖</button>`;
   el.innerHTML = `<div class="cav">${avatar(p, '')}</div><h2>${esc(p.name)}</h2><div id="cst" class="cst"></div><div class="cbar">${btns}</div>`;
   const $ = (i) => el.querySelector('#' + i);
