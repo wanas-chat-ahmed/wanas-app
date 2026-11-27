@@ -16,7 +16,7 @@ const SB_KEY = 'sb_publishable_QeMbFx5H3mRw9_kWdSBarw_a5owjM4y'; // publishable 
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 const emailOf = (wid) => `${String(wid).trim().toLowerCase()}@wanas-users.example.com`;
 
-const S = { me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
+const S = { wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
 const ONLINE_MS = 45000;
 
 async function signupCall(body) {
@@ -30,7 +30,7 @@ const fail = (error) => { if (error) { const m = (error.message || '').trim(); t
 
 async function logout() {
   teardownRealtime(); await sb.auth.signOut();
-  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; render();
+  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; render();
 }
 
 // ---------- helpers ----------
@@ -278,6 +278,56 @@ function contactSheet(id) {
   s.querySelector('#cl').onclick = () => s.remove();
 }
 
+
+// ---------- wallpapers (private table: only the owner can read or write their rows) ----------
+const WP_ALL = '00000000-0000-0000-0000-000000000000';
+const WP_PRESETS = [['lilac', 'بنفسجي'], ['sun', 'دهبي'], ['mint', 'نعناع'], ['sky', 'سما'], ['rose', 'ورد'], ['dots', 'نقط'], ['lines', 'خطوط'], ['night', 'ليلي']];
+async function loadWallpapers() {
+  S.wp = { all: null, chats: {} };
+  const { data } = await sb.from('wallpapers').select('chat_id,value');
+  (data || []).forEach((r) => { if (r.chat_id === WP_ALL) S.wp.all = r.value; else S.wp.chats[r.chat_id] = r.value; });
+}
+const wpFor = (id) => S.wp.chats[id] ?? S.wp.all;
+function applyWallpaper() {
+  const el = document.getElementById('msgs'); if (!el) return;
+  const v = wpFor(S.cur);
+  el.removeAttribute('data-wp'); el.style.background = '';
+  if (!v) return;
+  if (v.startsWith('p:')) el.dataset.wp = v.slice(2);
+  else { el.dataset.wp = 'img'; el.style.background = `linear-gradient(rgba(255,255,255,.25),rgba(255,255,255,.25)), url("${v}") center/cover fixed`; }
+}
+async function saveWallpaper(scopeAll, value) {
+  const chat_id = scopeAll ? WP_ALL : S.cur;
+  if (value == null) {
+    const { error } = await sb.from('wallpapers').delete().eq('chat_id', chat_id); fail(error);
+    if (scopeAll) S.wp.all = null; else delete S.wp.chats[chat_id];
+  } else {
+    const { error } = await sb.from('wallpapers').upsert({ chat_id, value }, { onConflict: 'user_id,chat_id' }); fail(error);
+    if (scopeAll) S.wp.all = value; else S.wp.chats[chat_id] = value;
+  }
+  applyWallpaper();
+}
+function wallpaperSheet() {
+  const s = sheet(`<h3>خلفية المحادثة</h3>
+    <div class="seg"><label><input type="radio" name="sc" value="one" checked> المحادثة دي بس</label><label><input type="radio" name="sc" value="all"> كل المحادثات</label></div>
+    <div class="wps">${WP_PRESETS.map(([id, n]) => `<button type="button" class="wpsw" data-wp="${id}" data-id="${id}" title="${n}"><span>${n}</span></button>`).join('')}</div>
+    <div class="err" id="werr"></div>
+    <button class="btn sec" id="wup">📷 صورة من الموبايل</button><input type="file" id="wfile" accept="image/*" class="hidden">
+    <button class="btn sec" id="wno">الخلفية الأصلية</button>
+    <button class="btn" id="wok">تمام</button>`);
+  const scopeAll = () => s.querySelector('input[name=sc]:checked').value === 'all', err = s.querySelector('#werr');
+  const run = async (v) => { err.textContent = ''; try { await saveWallpaper(scopeAll(), v); } catch { err.textContent = 'مقدرتش أحفظ الخلفية، جرّب تاني'; } };
+  s.querySelectorAll('.wpsw').forEach((b) => (b.onclick = () => run('p:' + b.dataset.id)));
+  s.querySelector('#wno').onclick = () => run(null);
+  s.querySelector('#wok').onclick = () => s.remove();
+  s.querySelector('#wup').onclick = () => s.querySelector('#wfile').click();
+  s.querySelector('#wfile').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const d = await resizeImage(f, 900, 0.6); if (d.length > 350000) { err.textContent = 'الصورة كبيرة، جرّب صورة تانية'; return; } await run(d); } catch { err.textContent = 'مقدرتش أقرا الصورة'; }
+    e.target.value = '';
+  };
+}
+
 function resizeImage(file, max, q) {
   return new Promise((res, rej) => {
     const img = new Image(), url = URL.createObjectURL(file);
@@ -302,7 +352,7 @@ function renderChat() {
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
-    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div></div>
+    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
     <div class="conn ${S.wsOk ? 'hidden' : ''}" id="connbar">بيتصل بالسيرفر…</div>
     <div class="msgs" id="msgs"></div>
     <div class="bar">
@@ -316,6 +366,8 @@ function renderChat() {
   const t = document.getElementById('txt');
   t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' };
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
+  document.getElementById('wpb').onclick = wallpaperSheet;
+  applyWallpaper();
   document.getElementById('snd').onclick = send;
   document.getElementById('mic').onclick = startRecording;
   document.getElementById('att').onclick = () => document.getElementById('img').click();
@@ -448,7 +500,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
-  setupRealtime(); await refreshContacts(); render();
+  await loadWallpapers(); setupRealtime(); await refreshContacts(); render();
 }
 boot();
 })();
