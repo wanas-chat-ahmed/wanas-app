@@ -135,3 +135,6 @@ input,textarea{font:inherit;color:inherit}
 .cb.on{background:#fff;color:#3b1d7a}
 .cb.red{background:#e11d48}.cb.grn{background:#16a34a}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;z-index:60;background:#1f1537;color:#fff;padding:10px 16px;border-radius:14px;max-width:86%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+
+.pbar{position:fixed;left:10px;right:10px;bottom:84px;z-index:40;background:#1f1537;color:#fff;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:8px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.pbar span{flex:1}.pbar button{background:var(--a);color:#1f1537;border:0;border-radius:10px;padding:7px 12px;font-weight:700}.pbar .x{background:none;color:#fff;padding:7px}
