@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '20';
+const BUILD = '21';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -601,7 +601,8 @@ function profileSheet() {
     <div class="err" id="perr"></div>
     <button class="btn" id="save">حفظ</button>
     <button class="btn sec" id="notif">${S.pushOn ? '🔔 الإشعارات شغالة (دوس للإيقاف)' : '🔔 تفعيل الإشعارات'}</button>
-    ${S.isAdmin ? '<button class="btn sec" id="stats">📊 إحصائيات</button>' : ''}
+    ${S.isAdmin ? '<button class="btn sec" id="stats">📊 لوحة الإحصائيات</button>' : ''}
+    ${S.isAdmin ? '<button class="btn sec" id="usersb">👥 كل المستخدمين</button>' : ''}
     <button class="btn sec" id="cpw">🔑 تغيير الباسورد</button>
     <button class="btn sec" id="rcg">🛟 كود استرجاع جديد</button>
     <button class="btn sec" id="out" style="color:#c0262d">تسجيل خروج</button>
@@ -621,6 +622,7 @@ function profileSheet() {
     if (await enablePush()) b.textContent = '🔔 الإشعارات شغالة (دوس للإيقاف)';
   };
   if (s.querySelector('#stats')) s.querySelector('#stats').onclick = () => { s.remove(); statsSheet(); };
+  if (s.querySelector('#usersb')) s.querySelector('#usersb').onclick = () => { s.remove(); usersSheet(); };
   s.querySelector('#out').onclick = () => { s.remove(); logout(); };
   s.querySelector('#cpw').onclick = () => { s.remove(); acctSheet('change'); };
   s.querySelector('#rcg').onclick = () => { s.remove(); acctSheet('regen'); };
@@ -764,30 +766,66 @@ function wallpaperSheet() {
 }
 
 
+// ---------- owner-only users list (SECURITY DEFINER admin_users: no passwords, bios, contacts or message bodies) ----------
+async function usersSheet() {
+  const s = sheet('<h3>كل المستخدمين</h3><div id="uinfo" style="color:var(--mu);font-size:13px;margin-bottom:8px"></div><label class="field" style="margin:0 0 8px"><input id="uq" placeholder="دوّر بالاسم أو الـ ID"></label><div id="ul" class="stats" style="max-height:56vh"><div class="sk"><i></i><i></i></div></div><button class="btn sec" id="uc">قفل</button>');
+  let rows = [], alive = true, timer = 0;
+  const box = s.querySelector('#ul'), info = s.querySelector('#uinfo');
+  const draw = () => {
+    const q = s.querySelector('#uq').value.trim().toLowerCase();
+    const list = rows.filter((u) => !q || u.wanas_id.toLowerCase().includes(q) || (u.name || '').toLowerCase().includes(q));
+    const on = rows.filter((u) => u.online).length;
+    info.textContent = 'الإجمالي ' + arN(rows.length) + ' · أونلاين دلوقتي ' + arN(on);
+    box.innerHTML = list.map((u) => `<div class="row" style="margin:0 0 8px;cursor:default"><div class="av sm">${esc((u.name || u.wanas_id).slice(0, 1))}${u.online ? '<i class="dot"></i>' : ''}</div><div class="mid"><div class="nm">${esc(u.name || '')} <span class="badge" style="margin:0;${u.is_teacher ? '' : 'background:var(--chip);color:var(--vt);box-shadow:none'}">${u.is_teacher ? 'عنده منصة' : 'طالب'}</span></div><div class="ls" dir="ltr" style="text-align:right">${esc(u.wanas_id)}</div><div style="font-size:12px;color:${u.online ? '#16a34a' : 'var(--mu)'}">${u.online ? '● أونلاين' : u.last_seen ? 'آخر ظهور ' + fmtDay(u.last_seen) + ' ' + fmtTime(u.last_seen) : 'ماظهرش'} · سجّل ${fmtDay(u.created_at)} · بعت ${arN(u.sent)} رسالة</div></div></div>`).join('') || '<div class="empty">مفيش نتايج</div>';
+  };
+  const load = async () => {
+    const { data, error } = await sb.rpc('admin_users');
+    if (!alive) return;
+    if (error || !data) { box.innerHTML = '<p class="err">مفيش صلاحية لعرض القائمة دي</p>'; return; }
+    rows = data; draw();
+  };
+  const close = () => { alive = false; clearInterval(timer); s.remove(); };
+  s.querySelector('#uc').onclick = close;
+  s.addEventListener('click', (e) => { if (e.target === s) close(); });
+  s.querySelector('#uq').oninput = draw;
+
+  await load(); timer = setInterval(() => { if (!s.isConnected) { close(); return; } load(); }, 20000);
+}
+
 // ---------- owner-only stats (aggregates from a SECURITY DEFINER function; the server checks the admin list) ----------
 async function statsSheet() {
-  const s = sheet('<h3>إحصائيات ونس</h3><div id="st" class="stats"><p style="color:var(--mu)">بيحمّل…</p></div><button class="btn sec" id="stc">قفل</button>');
+  const s = sheet('<h3>لوحة الإحصائيات</h3><div id="st" class="stats"><div class="sk"><i></i><i></i></div></div><button class="btn" id="stu">كل المستخدمين (القائمة التفصيلية)</button><button class="btn sec" id="stc">قفل</button>');
   s.querySelector('#stc').onclick = () => s.remove();
-  const { data, error } = await sb.rpc('admin_stats');
-  const box = s.querySelector('#st');
-  if (error || !data) { box.innerHTML = '<p class="err">مفيش صلاحية لعرض الإحصائيات دي</p>'; return; }
-  const n = (v) => Number(v).toLocaleString('ar-EG');
+  s.querySelector('#stu').onclick = () => { s.remove(); usersSheet(); };
+  const [a, b] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_platform_stats')]);
+  const box = s.querySelector('#st'), data = a.data, p = b.data;
+  if (a.error || b.error || !data || !p) { box.innerHTML = '<p class="err">مفيش صلاحية لعرض الإحصائيات دي</p>'; return; }
+  const n = (v) => Number(v ?? 0).toLocaleString('ar-EG');
   const card = (t, v) => `<div class="sc"><b>${n(v)}</b><span>${t}</span></div>`;
   const bars = (arr) => { const mx = Math.max(1, ...arr.map((x) => x.n)); return `<div class="bars">${arr.map((x) => `<div class="bc" title="${x.day}: ${x.n}"><i style="height:${Math.round((x.n / mx) * 100)}%"></i><small>${new Date(x.day).getDate()}</small></div>`).join('')}</div>`; };
-  box.innerHTML = `<div class="sg">
+  box.innerHTML = `<div class="sh">المستخدمين</div><div class="sg">
     ${card('إجمالي المستخدمين', data.users_total)}${card('أونلاين دلوقتي', data.online_now)}
+    ${card('معلّمين', p.teachers)}${card('طلاب', p.students)}
     ${card('نشطين آخر ٢٤ ساعة', data.active_24h)}${card('نشطين آخر ٧ أيام', data.active_7d)}
     ${card('تسجيلات النهارده', data.signups_today)}${card('تسجيلات آخر ٧ أيام', data.signups_7d)}
+  </div>
+  <div class="sh">تسجيلات جديدة (آخر ١٤ يوم)</div>${bars(data.signups_per_day)}
+  <div class="sh">الرسايل</div><div class="sg">
     ${card('إجمالي الرسايل', data.messages_total)}${card('رسايل النهارده', data.messages_today)}
     ${card('رسايل آخر ٧ أيام', data.messages_7d)}${card('محادثات', data.conversations)}
     ${card('نصوص', data.messages_text)}${card('صور', data.messages_image)}
-    ${card('رسايل صوتية', data.messages_voice)}${card('متوسط الرسايل للمرسل', data.avg_msgs_per_sender)}
-    ${card('مستخدمين ضافوا جهة اتصال', data.users_with_contact)}${card('مستخدمين بعتوا رسالة', data.users_who_sent)}
-    ${card('عندهم صورة شخصية', data.with_photo)}${card('كاتبين نبذة', data.with_bio)}
-    ${card('مغيّرين الخلفية', data.with_wallpaper)}${card('حجم الميديا (ميجا)', data.media_mb)}
+    ${card('رسايل صوتية', data.messages_voice)}${card('مستخدمين بعتوا رسالة', data.users_who_sent)}
   </div>
-  <div class="sh">تسجيلات جديدة (آخر ١٤ يوم)</div>${bars(data.signups_per_day)}
   <div class="sh">رسايل يوميًا (آخر ١٤ يوم)</div>${bars(data.messages_per_day)}
+  <div class="sh">المنصة التعليمية</div><div class="sg">
+    ${card('مواد', p.subjects)}${card('طلاب مسجّلين في مواد', p.enrolled_students)}
+    ${card('جلسات تسميع', p.recitations_total)}${card('تسميع آخر ٧ أيام', p.recitations_7d)}
+    ${card('متوسط درجة التسميع', p.avg_recitation_grade)}${card('آيات محفوظة', p.ayahs_memorized)}
+    ${card('دروس', p.lessons)}${card('دروس خلّصها الطلاب', p.lessons_done)}
+    ${card('كلمات', p.vocab)}${card('كلمات معروفة', p.vocab_known)}
+    ${card('جلسات مواد تانية', p.sj_sessions_total)}${card('متوسط درجة الجلسات', p.avg_sj_grade)}
+  </div>
+  <div class="sh">جلسات المنصة يوميًا (آخر ١٤ يوم)</div>${bars(p.sessions_per_day)}
   <div class="sh">مساحة قاعدة البيانات</div>
   <div class="cap"><i style="width:${Math.min(100, (data.db_mb / data.db_cap_mb) * 100)}%"></i></div>
   <small style="color:var(--mu)">${n(data.db_mb)} من ${n(data.db_cap_mb)} ميجا (الباقة المجانية)</small>`;
