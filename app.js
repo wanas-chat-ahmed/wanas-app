@@ -30,7 +30,7 @@ const fail = (error) => { if (error) { const m = (error.message || '').trim(); t
 
 async function logout() {
   teardownRealtime(); await sb.auth.signOut();
-  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; render();
+  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; render();
 }
 
 // ---------- helpers ----------
@@ -248,6 +248,7 @@ function profileSheet() {
     <div class="err" id="perr"></div>
     <button class="btn" id="save">حفظ</button>
     <button class="btn sec" id="notif">تفعيل الإشعارات</button>
+    ${S.isAdmin ? '<button class="btn sec" id="stats">📊 إحصائيات</button>' : ''}
     <button class="btn sec" id="out" style="color:#c0262d">تسجيل خروج</button>`);
   const file = s.querySelector('#file'); let photo = null;
   s.querySelector('#ph').onclick = () => file.click();
@@ -263,6 +264,7 @@ function profileSheet() {
     const p = await Notification.requestPermission();
     s.querySelector('#perr').textContent = p === 'granted' ? 'تمام، هتوصلك إشعارات لما التطبيق يكون مفتوح في الخلفية' : 'الإشعارات مرفوضة من المتصفح';
   };
+  if (s.querySelector('#stats')) s.querySelector('#stats').onclick = () => { s.remove(); statsSheet(); };
   s.querySelector('#out').onclick = () => { s.remove(); logout(); };
 }
 
@@ -326,6 +328,36 @@ function wallpaperSheet() {
     try { const d = await resizeImage(f, 900, 0.6); if (d.length > 350000) { err.textContent = 'الصورة كبيرة، جرّب صورة تانية'; return; } await run(d); } catch { err.textContent = 'مقدرتش أقرا الصورة'; }
     e.target.value = '';
   };
+}
+
+
+// ---------- owner-only stats (aggregates from a SECURITY DEFINER function; the server checks the admin list) ----------
+async function statsSheet() {
+  const s = sheet('<h3>إحصائيات ونس</h3><div id="st" class="stats"><p style="color:var(--mu)">بيحمّل…</p></div><button class="btn sec" id="stc">قفل</button>');
+  s.querySelector('#stc').onclick = () => s.remove();
+  const { data, error } = await sb.rpc('admin_stats');
+  const box = s.querySelector('#st');
+  if (error || !data) { box.innerHTML = '<p class="err">مفيش صلاحية لعرض الإحصائيات دي</p>'; return; }
+  const n = (v) => Number(v).toLocaleString('ar-EG');
+  const card = (t, v) => `<div class="sc"><b>${n(v)}</b><span>${t}</span></div>`;
+  const bars = (arr) => { const mx = Math.max(1, ...arr.map((x) => x.n)); return `<div class="bars">${arr.map((x) => `<div class="bc" title="${x.day}: ${x.n}"><i style="height:${Math.round((x.n / mx) * 100)}%"></i><small>${new Date(x.day).getDate()}</small></div>`).join('')}</div>`; };
+  box.innerHTML = `<div class="sg">
+    ${card('إجمالي المستخدمين', data.users_total)}${card('أونلاين دلوقتي', data.online_now)}
+    ${card('نشطين آخر ٢٤ ساعة', data.active_24h)}${card('نشطين آخر ٧ أيام', data.active_7d)}
+    ${card('تسجيلات النهارده', data.signups_today)}${card('تسجيلات آخر ٧ أيام', data.signups_7d)}
+    ${card('إجمالي الرسايل', data.messages_total)}${card('رسايل النهارده', data.messages_today)}
+    ${card('رسايل آخر ٧ أيام', data.messages_7d)}${card('محادثات', data.conversations)}
+    ${card('نصوص', data.messages_text)}${card('صور', data.messages_image)}
+    ${card('رسايل صوتية', data.messages_voice)}${card('متوسط الرسايل للمرسل', data.avg_msgs_per_sender)}
+    ${card('مستخدمين ضافوا جهة اتصال', data.users_with_contact)}${card('مستخدمين بعتوا رسالة', data.users_who_sent)}
+    ${card('عندهم صورة شخصية', data.with_photo)}${card('كاتبين نبذة', data.with_bio)}
+    ${card('مغيّرين الخلفية', data.with_wallpaper)}${card('حجم الميديا (ميجا)', data.media_mb)}
+  </div>
+  <div class="sh">تسجيلات جديدة (آخر ١٤ يوم)</div>${bars(data.signups_per_day)}
+  <div class="sh">رسايل يوميًا (آخر ١٤ يوم)</div>${bars(data.messages_per_day)}
+  <div class="sh">مساحة قاعدة البيانات</div>
+  <div class="cap"><i style="width:${Math.min(100, (data.db_mb / data.db_cap_mb) * 100)}%"></i></div>
+  <small style="color:var(--mu)">${n(data.db_mb)} من ${n(data.db_cap_mb)} ميجا (الباقة المجانية)</small>`;
 }
 
 function resizeImage(file, max, q) {
@@ -500,7 +532,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
-  await loadWallpapers(); setupRealtime(); await refreshContacts(); render();
+  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); render();
 }
 boot();
 })();
