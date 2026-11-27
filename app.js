@@ -11,26 +11,33 @@ const ERR = {
   not_found: 'مفيش حد بالـ ID ده', self: 'ده الـ ID بتاعك انت 😄', server: 'في مشكلة في السيرفر، جرّب تاني', net: 'مفيش اتصال، جرّب تاني',
 };
 
-const S = { token: LS.get('wanas_token'), me: null, contacts: [], cur: null, msgs: {}, ws: null, wsOk: false, typing: {}, retry: 0 };
+const SB_URL = 'https://ykrlreixhvnrkvhwgjtd.supabase.co';
+const SB_KEY = 'sb_publishable_QeMbFx5H3mRw9_kWdSBarw_a5owjM4y'; // publishable key: safe in the browser, access is enforced by RLS
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+const emailOf = (wid) => `${String(wid).trim().toLowerCase()}@wanas-users.example.com`;
 
-async function api(path, opts = {}) {
+const S = { me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
+const ONLINE_MS = 45000;
+
+async function signupCall(body) {
   let r;
-  try {
-    r = await fetch('/api' + path, { method: opts.method || 'GET', headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
-  } catch { throw new Error('net'); }
+  try { r = await fetch(SB_URL + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SB_KEY }, body: JSON.stringify(body) }); }
+  catch { throw new Error('net'); }
   const j = await r.json().catch(() => ({}));
-  if (r.status === 401 && S.token && !opts.noLogout) { logout(); throw new Error('bad_login'); }
   if (!r.ok) throw new Error(j.error || 'server');
-  return j;
 }
+const fail = (error) => { if (error) { const m = (error.message || '').trim(); throw new Error(/not_found|self|unauthorized/.test(m) ? m.match(/not_found|self|unauthorized/)[0] : /fetch|network/i.test(m) ? 'net' : 'server'); } };
 
-function logout() { LS.del('wanas_token'); S.token = null; S.me = null; if (S.ws) { S.ws.onclose = null; S.ws.close(); } S.ws = null; S.cur = null; S.contacts = []; S.msgs = {}; render(); }
+async function logout() {
+  teardownRealtime(); await sb.auth.signOut();
+  S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; render();
+}
 
 // ---------- helpers ----------
 const initial = (n) => (String(n || '?').trim()[0] || '?').toUpperCase();
 function avatar(u, cls = '', showDot = false) {
   const inner = u.photo ? `<img src="${esc(u.photo)}" alt="">` : esc(initial(u.name));
-  return `<div class="av ${cls}">${inner}${showDot && u.online ? '<span class="dot"></span>' : ''}</div>`;
+  return `<div class="av ${cls}">${inner}${showDot && isOnline(u) ? '<span class="dot"></span>' : ''}</div>`;
 }
 const fmtTime = (d) => new Date(d).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
 function fmtDay(d) {
@@ -42,52 +49,63 @@ function fmtDay(d) {
   return x.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
 }
 function lastSeenText(c) {
-  if (c.online) return 'متصل دلوقتي';
+  if (isOnline(c)) return 'متصل دلوقتي';
   if (!c.lastSeen) return '';
   return 'آخر ظهور ' + fmtDay(c.lastSeen) + ' ' + fmtTime(c.lastSeen);
 }
-const byId = (id) => S.contacts.find((c) => Number(c.id) === Number(id));
+const byId = (id) => S.contacts.find((c) => c.id === id);
+const isOnline = (c) => !!c.lastSeen && Date.now() - new Date(c.lastSeen).getTime() < ONLINE_MS;
 function previewOf(m) { return !m ? 'ابدأ المحادثة' : m.kind === 'image' ? '📷 صورة' : m.body; }
 
-// ---------- websocket ----------
-function connect() {
-  if (!S.token) return;
-  if (S.ws) { S.ws.onclose = null; try { S.ws.close(); } catch {} }
-  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + encodeURIComponent(S.token));
-  S.ws = ws;
-  ws.onopen = () => { S.wsOk = true; S.retry = 0; updateConn(); refreshAll(); S.ping = setInterval(() => ws.readyState === 1 && ws.send('{"t":"ping"}'), 20000); };
-  ws.onclose = () => { S.wsOk = false; clearInterval(S.ping); updateConn(); S.retry++; setTimeout(connect, Math.min(1000 * 2 ** Math.min(S.retry, 4), 15000)); };
-  ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } onEvent(m); };
+// ---------- realtime (Supabase Realtime, filtered by RLS per user) ----------
+function setupRealtime() {
+  teardownRealtime();
+  const ch = sb.channel('wanas-' + S.me.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => onMessage(p.new))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (p) => onMessageUpdate(p.new))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => onProfile(p.new))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'contacts' }, () => refreshContacts())
+    .subscribe((status) => {
+      const ok = status === 'SUBSCRIBED';
+      if (ok && !S.wsOk) refreshAll();
+      S.wsOk = ok; updateConn();
+    });
+  S.ch = ch;
+  beat(); S.beatT = setInterval(beat, 20000); S.tickT = setInterval(() => { if (S.cur) renderChatHeader(); else renderListIf(); }, 15000);
 }
-function sendWs(o) { if (S.ws && S.ws.readyState === 1) { S.ws.send(JSON.stringify(o)); return true; } return false; }
+function teardownRealtime() {
+  clearInterval(S.beatT); clearInterval(S.tickT);
+  if (S.ch) { sb.removeChannel(S.ch); S.ch = null; } S.wsOk = false;
+}
+async function beat() { if (document.visibilityState === 'visible' && S.me) await sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', S.me.id); }
 
-function onEvent(m) {
-  if (m.t === 'message') {
-    const msg = m.msg, other = Number(msg.from_id) === Number(S.me.id) ? msg.to_id : msg.from_id;
-    const arr = (S.msgs[other] = S.msgs[other] || []);
-    if (!arr.some((x) => Number(x.id) === Number(msg.id))) {
-      const pi = m.cid ? arr.findIndex((x) => x.cid === m.cid) : -1;
-      if (pi >= 0) arr[pi] = msg; else arr.push(msg);
-    }
-    let c = byId(other);
-    if (!c) { refreshContacts(); return; }
-    c.last = msg;
-    const mine = Number(msg.from_id) === Number(S.me.id);
-    if (!mine) {
-      if (S.cur === Number(other) && document.visibilityState === 'visible') { sendWs({ t: 'read', with: other }); msg.read_at = new Date().toISOString(); }
-      else { c.unread = (c.unread || 0) + 1; notify(c, msg); }
-    }
-    S.contacts.sort(sortC);
-    S.cur === Number(other) ? renderChatBody(true) : renderListIf();
-  } else if (m.t === 'presence') {
-    const c = byId(m.id); if (c) { c.online = m.online; c.lastSeen = m.lastSeen; S.cur === c.id ? renderChatHeader() : renderListIf(); }
-  } else if (m.t === 'typing') {
-    S.typing[m.id] = Date.now(); if (S.cur === Number(m.id)) renderChatHeader(); setTimeout(() => S.cur === Number(m.id) && renderChatHeader(), 3200);
-  } else if (m.t === 'read') {
-    (S.msgs[m.by] || []).forEach((x) => { if (Number(x.id) <= m.upTo && Number(x.from_id) === Number(S.me.id)) x.read_at = x.read_at || new Date().toISOString(); });
-    if (S.cur === Number(m.by)) renderChatBody(false);
-  } else if (m.t === 'contact') { refreshContacts(); }
-  else if (m.t === 'profile') { const c = byId(m.user.id); if (c) { Object.assign(c, m.user); S.cur === c.id ? renderChatHeader() : renderListIf(); } }
+function onMessage(msg) {
+  const mine = msg.from_id === S.me.id, other = mine ? msg.to_id : msg.from_id;
+  const arr = (S.msgs[other] = S.msgs[other] || []);
+  if (!arr.some((x) => x.id === msg.id)) {
+    const pi = mine ? arr.findIndex((x) => x.pending && x.kind === msg.kind && x.body === msg.body) : -1;
+    if (pi >= 0) arr[pi] = msg; else arr.push(msg);
+  }
+  const c = byId(other);
+  if (!c) { refreshContacts(); return; }
+  c.last = msg;
+  if (!mine) {
+    if (S.cur === other && document.visibilityState === 'visible') markRead(other);
+    else { c.unread = (c.unread || 0) + 1; notify(c, msg); }
+  }
+  S.contacts.sort(sortC);
+  S.cur === other ? renderChatBody(true) : renderListIf();
+}
+function onMessageUpdate(msg) {
+  const other = msg.from_id === S.me.id ? msg.to_id : msg.from_id;
+  const x = (S.msgs[other] || []).find((m) => m.id === msg.id); if (x) x.read_at = msg.read_at;
+  const c = byId(other); if (c && c.last && c.last.id === msg.id) c.last.read_at = msg.read_at;
+  if (S.cur === other) renderChatBody(false);
+}
+function onProfile(p) {
+  const c = byId(p.id); if (!c) return;
+  Object.assign(c, { name: p.name, photo: p.photo, lastSeen: p.last_seen });
+  S.cur === c.id ? renderChatHeader() : renderListIf();
 }
 const sortC = (a, b) => new Date(b.last?.created_at || 0) - new Date(a.last?.created_at || 0);
 
@@ -98,17 +116,42 @@ function notify(c, msg) {
 }
 
 // ---------- data ----------
-async function refreshContacts() {
-  try { S.contacts = (await api('/contacts')).contacts.sort(sortC); S.contacts.forEach((c) => c.id = Number(c.id)); renderListIf(); if (S.cur) renderChatHeader(); } catch {}
+const meOf = (p) => ({ id: p.id, wanasId: p.wanas_id, name: p.name, photo: p.photo || null, lastSeen: p.last_seen });
+async function loadMe() {
+  const { data: u } = await sb.auth.getUser();
+  if (!u?.user) return null;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', u.user.id).single();
+  fail(error); return meOf(data);
 }
-async function refreshAll() { await refreshContacts(); if (S.cur) { await loadMsgs(S.cur); renderChatBody(true); sendWs({ t: 'read', with: S.cur }); } }
+async function refreshContacts() {
+  try {
+    const { data: conv, error } = await sb.rpc('my_conversations'); fail(error);
+    const ids = conv.map((r) => r.contact_id);
+    const { data: profs, error: e2 } = ids.length ? await sb.from('profiles').select('*').in('id', ids) : { data: [] }; fail(e2);
+    S.contacts = conv.map((r) => {
+      const p = profs.find((x) => x.id === r.contact_id); if (!p) return null;
+      return { ...meOf(p), unread: r.unread, last: r.last_id ? { id: r.last_id, from_id: r.last_from, kind: r.last_kind, body: r.last_body, created_at: r.last_at, read_at: r.last_read } : null };
+    }).filter(Boolean).sort(sortC);
+    renderListIf(); if (S.cur) renderChatHeader();
+  } catch {}
+}
+async function refreshAll() { await refreshContacts(); if (S.cur) { await loadMsgs(S.cur); renderChatBody(true); markRead(S.cur); } }
 async function loadMsgs(id) {
-  try { S.msgs[id] = (await api('/messages/' + id)).messages; } catch {}
+  const me = S.me.id;
+  const { data, error } = await sb.from('messages').select('*')
+    .or(`and(from_id.eq.${me},to_id.eq.${id}),and(from_id.eq.${id},to_id.eq.${me})`).order('id', { ascending: false }).limit(50);
+  if (!error) S.msgs[id] = data.reverse();
+}
+async function markRead(other) {
+  const now = new Date().toISOString();
+  (S.msgs[other] || []).forEach((m) => { if (m.from_id === other && !m.read_at) m.read_at = now; });
+  const c = byId(other); if (c) c.unread = 0;
+  await sb.from('messages').update({ read_at: now }).eq('from_id', other).eq('to_id', S.me.id).is('read_at', null);
 }
 
 // ---------- views ----------
 function render() {
-  if (!S.token || !S.me) return renderAuth();
+  if (!S.me) return renderAuth();
   S.cur ? renderChat() : renderList();
 }
 
@@ -130,12 +173,13 @@ function renderAuth(mode = 'login') {
   document.getElementById('f').onsubmit = async (e) => {
     e.preventDefault();
     const go = document.getElementById('go'), err = document.getElementById('err');
-    go.disabled = true; err.textContent = mode === 'signup' || true ? 'لحظة… (أول مرة ممكن ياخد ثواني لحد ما السيرفر يصحى)' : '';
+    go.disabled = true; err.textContent = 'لحظة… (أول مرة بعد فترة ممكن ياخد حوالي دقيقة لحد ما السيرفر يصحى)';
     try {
-      const body = { wanasId: document.getElementById('wid').value, password: document.getElementById('pw').value };
-      if (mode === 'signup') body.name = document.getElementById('name').value;
-      const j = await api(mode === 'login' ? '/login' : '/signup', { method: 'POST', body, noLogout: true });
-      S.token = j.token; LS.set('wanas_token', j.token); S.me = j.me; boot();
+      const wid = document.getElementById('wid').value.trim().toLowerCase(), pw = document.getElementById('pw').value;
+      if (mode === 'signup') await signupCall({ wanasId: wid, password: pw, name: document.getElementById('name').value });
+      const { error } = await sb.auth.signInWithPassword({ email: emailOf(wid), password: pw });
+      if (error) throw new Error(/fetch|network/i.test(error.message) ? 'net' : 'bad_login');
+      boot();
     } catch (x) { err.textContent = ERR[x.message] || ERR.server; go.disabled = false; }
   };
 }
@@ -158,7 +202,7 @@ function renderList() {
     </div>
   </div>`;
   updateConn();
-  document.querySelectorAll('.row').forEach((r) => (r.onclick = () => openChat(Number(r.dataset.id))));
+  document.querySelectorAll('.row').forEach((r) => (r.onclick = () => openChat(r.dataset.id)));
   document.getElementById('add').onclick = addSheet;
   document.getElementById('me').onclick = profileSheet;
 }
@@ -180,11 +224,13 @@ function addSheet() {
   s.querySelector('#find').onclick = async () => {
     err.textContent = ''; res.innerHTML = '';
     try {
-      const u = (await api('/users/' + encodeURIComponent(s.querySelector('#aid').value.trim()))).user;
-      if (Number(u.id) === Number(S.me.id)) throw new Error('self');
+      const { data, error } = await sb.rpc('find_user', { p_wanas_id: s.querySelector('#aid').value }); fail(error);
+      if (!data.length) throw new Error('not_found');
+      const u = { id: data[0].id, wanasId: data[0].wanas_id, name: data[0].name, photo: data[0].photo };
+      if (u.id === S.me.id) throw new Error('self');
       res.innerHTML = `<div class="found">${avatar(u)}<div style="flex:1"><b>${esc(u.name)}</b><div style="color:var(--mu);direction:ltr;text-align:right">@${esc(u.wanasId)}</div></div></div><button class="btn" id="ok">إضافة وبدء محادثة</button>`;
       s.querySelector('#ok').onclick = async () => {
-        try { await api('/contacts', { method: 'POST', body: { wanasId: u.wanasId } }); await refreshContacts(); s.remove(); openChat(Number(u.id)); } catch (x) { err.textContent = ERR[x.message] || ERR.server; }
+        try { const { error } = await sb.rpc('add_contact', { p_wanas_id: u.wanasId }); fail(error); await refreshContacts(); s.remove(); openChat(u.id); } catch (x) { err.textContent = ERR[x.message] || ERR.server; }
       };
     } catch (x) { err.textContent = ERR[x.message] || ERR.server; }
   };
@@ -206,7 +252,9 @@ function profileSheet() {
   s.querySelector('#ph').onclick = () => file.click();
   file.onchange = async () => { if (file.files[0]) { photo = await resizeImage(file.files[0], 256, 0.85); s.querySelector('#pav').innerHTML = avatar({ ...S.me, photo }); } };
   s.querySelector('#save').onclick = async () => {
-    try { const j = await api('/me', { method: 'PUT', body: { name: s.querySelector('#pn').value, ...(photo ? { photo } : {}) } }); S.me = j.me; s.remove(); render(); }
+    try { const name = s.querySelector('#pn').value.trim(); if (!name) throw new Error('bad_name');
+      const { error } = await sb.from('profiles').update({ name: name.slice(0, 40), ...(photo ? { photo } : {}) }).eq('id', S.me.id); fail(error);
+      S.me = await loadMe(); s.remove(); render(); }
     catch (x) { s.querySelector('#perr').textContent = ERR[x.message] || 'مقدرتش أحفظ'; }
   };
   s.querySelector('#notif').onclick = async () => {
@@ -231,11 +279,11 @@ function resizeImage(file, max, q) {
 
 // ---------- chat ----------
 async function openChat(id) {
-  S.cur = Number(id);
+  S.cur = id;
   const c = byId(id); if (c) c.unread = 0;
   renderChat();
   await loadMsgs(S.cur); renderChatBody(true);
-  sendWs({ t: 'read', with: S.cur });
+  markRead(S.cur); renderChatHeader();
 }
 function renderChat() {
   const c = byId(S.cur);
@@ -252,21 +300,20 @@ function renderChat() {
   </div>`;
   document.getElementById('back').onclick = () => { S.cur = null; renderList(); refreshContacts(); };
   const t = document.getElementById('txt');
-  t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; if (!t._last || Date.now() - t._last > 2000) { t._last = Date.now(); sendWs({ t: 'typing', to: S.cur }); } };
+  t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' };
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
   document.getElementById('snd').onclick = send;
   document.getElementById('att').onclick = () => document.getElementById('img').click();
   document.getElementById('img').onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
-    try { const d = await resizeImage(f, 1024, 0.7); if (d.length > 550000) return alert('الصورة كبيرة، جرّب صورة أصغر'); transmit('image', d); } catch { alert('مقدرتش أقرا الصورة'); }
+    try { const d = await resizeImage(f, 1024, 0.7); if (d.length > 450000) return alert('الصورة كبيرة، جرّب صورة أصغر'); transmit('image', d); } catch { alert('مقدرتش أقرا الصورة'); }
     e.target.value = '';
   };
   renderChatHeader(); renderChatBody(true);
 }
 function renderChatHeader() {
   const hd = document.getElementById('hd'); const c = byId(S.cur); if (!hd || !c) return;
-  const typing = S.typing[c.id] && Date.now() - S.typing[c.id] < 3000;
-  hd.innerHTML = `${avatar(c, 'sm', true)}<div class="top" style="padding:0;background:none"><h2>${esc(c.name)}<small>${typing ? 'بيكتب…' : esc(lastSeenText(c))}</small></h2></div>`;
+  hd.innerHTML = `${avatar(c, 'sm', true)}<div class="top" style="padding:0;background:none"><h2>${esc(c.name)}<small>${esc(lastSeenText(c))}</small></h2></div>`;
 }
 function renderChatBody(scroll) {
   const box = document.getElementById('msgs'); if (!box) return;
@@ -274,7 +321,7 @@ function renderChatBody(scroll) {
   let html = '', lastDay = '';
   for (const m of S.msgs[S.cur] || []) {
     const day = fmtDay(m.created_at || Date.now()); if (day !== lastDay) { html += `<div class="day">${day}</div>`; lastDay = day; }
-    const mine = Number(m.from_id) === Number(S.me.id);
+    const mine = m.from_id === S.me.id;
     const tick = mine ? (m.pending ? ' 🕓' : m.read_at ? ' ✓✓' : ' ✓') : '';
     html += `<div class="b ${mine ? 'me' : 'them'}">${m.kind === 'image' ? `<img src="${esc(m.body)}" alt="صورة">` : esc(m.body)}<div class="mt">${m.created_at ? fmtTime(m.created_at) : ''}${tick}</div></div>`;
   }
@@ -286,20 +333,27 @@ function send() {
   const t = document.getElementById('txt'); const v = t.value.trim(); if (!v) return;
   t.value = ''; t.style.height = 'auto'; transmit('text', v);
 }
-function transmit(kind, body) {
-  const cid = 'c' + Date.now() + Math.random().toString(36).slice(2, 6);
-  const arr = (S.msgs[S.cur] = S.msgs[S.cur] || []);
-  arr.push({ cid, pending: true, from_id: S.me.id, to_id: S.cur, kind, body, created_at: new Date().toISOString() });
+async function transmit(kind, body) {
+  const to = S.cur, arr = (S.msgs[to] = S.msgs[to] || []);
+  const tmp = { pending: true, from_id: S.me.id, to_id: to, kind, body, created_at: new Date().toISOString() };
+  arr.push(tmp); renderChatBody(true);
+  const { data, error } = await sb.from('messages').insert({ to_id: to, kind, body }).select().single();
+  if (error) {
+    arr.splice(arr.indexOf(tmp), 1); renderChatBody(false);
+    alert('الرسالة ماتبعتتش، تأكد من النت وجرّب تاني'); if (kind === 'text') document.getElementById('txt').value = body; return;
+  }
+  const i = arr.indexOf(tmp), dup = arr.some((x) => x.id === data.id);
+  if (i >= 0) { if (dup) arr.splice(i, 1); else arr[i] = data; }
+  const c = byId(to); if (c) { c.last = data; S.contacts.sort(sortC); }
   renderChatBody(true);
-  if (!sendWs({ t: 'send', to: S.cur, kind, body, cid })) { arr.pop(); renderChatBody(false); alert('مفيش اتصال بالسيرفر دلوقتي، استنى ثانية وجرّب تاني'); if (kind === 'text') document.getElementById('txt').value = body; }
 }
 
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.token) { if (!S.wsOk) connect(); if (S.cur) sendWs({ t: 'read', with: S.cur }); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.me) { beat(); if (S.cur) { loadMsgs(S.cur).then(() => { renderChatBody(false); markRead(S.cur); }); } } });
 
 async function boot() {
-  if (!S.token) return renderAuth();
-  try { if (!S.me) S.me = (await api('/me')).me; } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } return renderAuth(); }
-  connect(); await refreshContacts(); render();
+  try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
+  if (!S.me) return renderAuth();
+  setupRealtime(); await refreshContacts(); render();
 }
 boot();
 })();
