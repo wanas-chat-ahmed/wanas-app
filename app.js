@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '15';
+const BUILD = '16';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -308,9 +308,54 @@ async function studentProgress(sid, name, teacher) {
   box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? '<button class="ib" id="sback" style="color:var(--v)">→</button>' : ''}<b style="font-size:18px">${esc(name)}</b></div>
     <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--v)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
+    <div style="padding:0 14px 6px;display:flex;align-items:center"><b style="flex:1">جلسات التسميع</b>${teacher ? '<button class="btn" id="newrc" style="width:auto;padding:8px 16px;margin:0">＋ تسميع جديد</button>' : ''}</div>
+    <div id="rchist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
+    <div style="padding:0 14px"><b>الخريطة</b></div>
     <div class="list">${surahs}</div>`;
-  if (teacher) box.querySelector('#sback').onclick = teacherHome;
+  if (teacher) { box.querySelector('#sback').onclick = teacherHome; box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
+  loadRecitations(sid, name, teacher);
   box.querySelectorAll('.qs').forEach((r) => (r.onclick = () => surahSheet(sid, name, teacher, +r.dataset.n)));
+}
+const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
+async function loadRecitations(sid, name, teacher, lim = 15) {
+  const el = document.getElementById('rchist'); if (!el) return;
+  const { data, error } = await sb.from('recitations').select('id,session_date,surah,from_ayah,to_ayah,grade,mistakes,notes').eq('student_id', sid).order('session_date', { ascending: false }).order('id', { ascending: false }).limit(lim + 1);
+  if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل الجلسات</div>'; return; }
+  if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">لسه مفيش جلسات تسميع</div>'; return; }
+  const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
+  el.innerHTML = data.slice(0, lim).map((r) => `<div class="rcard" style="background:#f5f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px">
+    <div style="display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)}</b><span style="color:var(--mu);font-size:13px">${fmtDate(r.session_date)}</span></div>
+    <div style="font-size:14px;margin-top:3px">${r.grade != null ? 'التقدير: <b>' + arN(r.grade) + '/١٠</b> · ' : ''}الأخطاء: <b>${arN(r.mistakes)}</b></div>
+    ${r.notes ? `<div style="font-size:14px;color:#444;margin-top:3px;white-space:pre-wrap">${esc(r.notes)}</div>` : ''}
+    ${teacher ? `<button class="link" data-del="${r.id}" style="margin:4px 0 0;color:#c0262d;font-size:13px">مسح</button>` : ''}</div>`).join('') + (data.length > lim ? '<button class="btn sec" id="rcmore" style="margin:0">عرض أقدم</button>' : '');
+  el.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => { if (!confirm('تمسح الجلسة دي؟')) return; const { error } = await sb.rpc('delete_recitation', { p_id: +b.dataset.del }); if (error) return toast('مقدرتش أمسح'); loadRecitations(sid, name, teacher, lim); }));
+  const m = el.querySelector('#rcmore'); if (m) m.onclick = () => loadRecitations(sid, name, teacher, lim + 15);
+}
+function recitationSheet(sid, name) {
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const s = sheet(`<h3>تسميع جديد · ${esc(name)}</h3>
+    <label class="field"><span>التاريخ</span><input id="rd" type="date" value="${today}"></label>
+    <label class="field"><span>السورة</span><select id="rs">${S.qs.map((q) => `<option value="${q.num}">${arN(q.num)}. ${esc(q.name_ar)} (${arN(q.ayahs)})</option>`).join('')}</select></label>
+    <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>من آية</span><input id="rf" type="number" min="1" value="1"></label><label class="field" style="flex:1"><span>لآية</span><input id="rt" type="number" min="1" value="1"></label></div>
+    <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>التقدير (٠ لـ ١٠)</span><input id="rg" type="number" min="0" max="10" value="8"></label><label class="field" style="flex:1"><span>عدد الأخطاء</span><input id="rm" type="number" min="0" max="500" value="0"></label></div>
+    <label class="field"><span>ملاحظات</span><textarea id="rn" rows="2" maxlength="1000"></textarea></label>
+    <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="rk"> علّم المدى ده «محفوظ» في الخريطة</label>
+    <div class="err" id="aerr"></div><button class="btn" id="go">حفظ الجلسة</button><button class="btn sec" id="cl">إلغاء</button>`);
+  const rs = s.querySelector('#rs'), rt = s.querySelector('#rt');
+  const maxA = () => S.qs.find((q) => q.num === +rs.value).ayahs;
+  rs.onchange = () => { rt.value = Math.min(+rt.value || 1, maxA()); };
+  s.querySelector('#cl').onclick = () => s.remove();
+  s.querySelector('#go').onclick = async () => {
+    const e = s.querySelector('#aerr'), go = s.querySelector('#go'); e.textContent = '';
+    const surah = +rs.value, f = +s.querySelector('#rf').value, t = +rt.value, g = s.querySelector('#rg').value, m = +s.querySelector('#rm').value;
+    if (!(f >= 1 && t <= maxA() && f <= t)) { e.textContent = 'المدى غلط (١ لـ ' + arN(maxA()) + ')'; return; }
+    if (g === '' || +g < 0 || +g > 10) { e.textContent = 'التقدير من ٠ لـ ١٠'; return; }
+    go.disabled = true;
+    const { error } = await sb.rpc('add_recitation', { p_student: sid, p_date: s.querySelector('#rd').value || null, p_surah: surah, p_from: f, p_to: t, p_grade: +g, p_mistakes: m, p_notes: s.querySelector('#rn').value });
+    if (error) { e.textContent = 'مقدرتش أحفظ'; go.disabled = false; return; }
+    if (s.querySelector('#rk').checked) await sb.rpc('set_progress', { p_student: sid, p_surah: surah, p_from: f, p_to: t, p_status: 'memorized' });
+    s.remove(); studentProgress(sid, name, true);
+  };
 }
 async function surahSheet(sid, name, teacher, num) {
   const q = S.qs.find((x) => x.num === num);
