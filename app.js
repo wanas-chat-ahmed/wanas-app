@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '23';
+const BUILD = '24';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -271,7 +271,7 @@ async function loadSurahs() {
 }
 async function renderQuran() {
   S.view = 'quran';
-  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">${IC('back')}</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'منصتك: معلّم · وفي منصات غيرك: طالب' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div></div>`;
+  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">${IC('back')}</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'منصتك: معلّم · وفي منصات غيرك: طالب' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div id="qtabs"></div><div class="wrap" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div></div>`;
   document.getElementById('qback').onclick = () => { S.view = null; render(); };
   try {
     await loadSurahs();
@@ -292,7 +292,28 @@ function subjectBar() {
   const ob = el.querySelector('#qopen'); if (ob) ob.onclick = openMyPlatform;
 }
 function curSub() { return (S.subs || []).find((x) => x.id === S.sub); }
+const QT = [['tilawa', 'تلاوة'], ['story', 'قصص'], ['seerah', 'سيرة']];
 function openSubject() {
+  const sub = curSub(), tb = document.getElementById('qtabs'), box = document.getElementById('qbody'); if (!box) return;
+  if (!sub || sub.kind !== 'quran') { if (tb) tb.innerHTML = ''; return openSubject0(); }
+  if (S.qtabSub !== sub.id) { S.qtabSub = sub.id; S.qtab = 'tilawa'; }
+  tb.innerHTML = `<div style="display:flex;gap:6px;padding:8px 14px 0">${QT.map(([k, n]) => `<button class="qtab" data-k="${k}" style="flex:1;border:0;border-radius:12px;padding:8px 0;font-weight:700;background:${k === S.qtab ? 'var(--v)' : 'var(--chip)'};color:${k === S.qtab ? '#fff' : 'var(--v)'}">${n}</button>`).join('')}</div>`;
+  tb.querySelectorAll('.qtab').forEach((b) => (b.onclick = () => { S.qtab = b.dataset.k; openSubject(); }));
+  if (S.qtab === 'tilawa') return openSubject0();
+  chapterList(sub, S.qtab);
+}
+async function chapterList(sub, kind) {
+  const box = document.getElementById('qbody'); if (!box) return;
+  box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
+  const { data, error } = await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', sub.id).eq('kind', kind).order('level').order('position').order('id');
+  if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
+  if (!data.length) { box.innerHTML = '<div class="empty">لسه مفيش محتوى هنا</div>'; return; }
+  let last = null, h = '';
+  for (const l of data) { if (l.level !== last) { last = l.level; h += `<div style="padding:12px 16px 4px;color:var(--mu);font-size:13px;font-weight:700">${esc(l.level || '')}</div>`; } h += `<div class="row chp" data-id="${l.id}"><div class="mid"><div class="nm" dir="auto">${esc(l.title)}</div></div></div>`; }
+  box.innerHTML = `<div class="list">${h}</div>`;
+  box.querySelectorAll('.chp').forEach((r) => (r.onclick = () => lessonSheet(data.find((x) => x.id == r.dataset.id))));
+}
+function openSubject0() {
   const sub = curSub(), box = document.getElementById('qbody'); if (!box) return;
   if (!sub) { box.innerHTML = `<div class="empty">لسه مفيش مواد.<br>لو مدرّس عاوز تفتح منصتك وتضيف طلابك:</div><div style="padding:0 24px"><button class="btn" id="openpl">افتح منصتي كمعلّم</button></div>`; const ob = box.querySelector('#openpl'); if (ob) ob.onclick = openMyPlatform; return; }
   if (sub.teacher_id === S.me.id) { sub.kind === 'quran' ? teacherHome() : genericHome(sub); return; }
@@ -326,7 +347,8 @@ const sjTab = (t, k, on) => `<button class="sjt" data-t="${k}" style="flex:1;bor
 const sjBadge = (m, k) => `<span style="display:inline-block;border-radius:10px;padding:2px 9px;font-size:12px;color:#fff;background:${m[k][1]}">${m[k][0]}</span>`;
 async function genericHome(sub, tab = 'students') {
   const box = document.getElementById('qbody'); if (!box) return;
-  const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الطلاب', 'students', tab === 'students')}${sjTab('المنهج', 'lesson', tab === 'lesson')}${sjTab('القواعد', 'grammar', tab === 'grammar')}</div>`;
+  const rdr = sub.kind === 'reader';
+  const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الطلاب', 'students', tab === 'students')}${sjTab(rdr ? 'الفصول' : 'المنهج', 'lesson', tab === 'lesson')}${rdr ? '' : sjTab('القواعد', 'grammar', tab === 'grammar')}</div>`;
   const bind = () => box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => genericHome(sub, b.dataset.t)));
   if (tab !== 'students') {
     const { data, error } = await sb.from('sj_lessons').select('id,kind,level,title,body,position').eq('subject_id', sub.id).eq('kind', tab).order('level').order('position').order('id');
@@ -360,24 +382,31 @@ async function genericHome(sub, tab = 'students') {
   box.querySelectorAll('.row').forEach((r) => (r.onclick = () => sjStudent(sub, r.dataset.id, r.dataset.n, true)));
   box.querySelector('#qadd').onclick = addStudentSheet;
 }
+function lessonSheet(l, st) {
+  const body = esc(l.body || '').replace(/https?:\/\/[^\s<)]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener" style="color:var(--vt);word-break:break-all">${u}</a>`).split('\n').map((x) => `<div dir="auto" style="min-height:1em">${x}</div>`).join('');
+  const s = sheet(`<h3>${l.level ? `<small style="color:var(--mu);font-weight:400">${esc(l.level)}</small><br>` : ''}${esc(l.title)}</h3><div style="line-height:1.9;font-size:16px;max-height:62vh;overflow:auto">${body}</div>${st ? `<button class="btn" id="lst" style="margin-top:12px">غيّر الحالة (دلوقتي: ${st.label})</button>` : ''}<button class="btn sec" id="cl">قفل</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
+  const b = s.querySelector('#lst'); if (b) b.onclick = async () => { s.remove(); await st.next(); };
+}
 async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
+  const rd = sub.kind === 'reader'; if (rd) tab = 'lessons';
   const box = document.getElementById('qbody'); if (!box) return;
   const back = teacher ? `<button class="btn sec" id="sjb" style="margin:10px 14px 0;width:auto;padding:6px 14px;display:inline-flex;align-items:center;gap:4px">${IC('back')} الطلاب</button>` : '';
   const [ls, pg, vc, ss] = await Promise.all([
     sb.from('sj_lessons').select('id,kind,level,title,body').eq('subject_id', sub.id).order('level').order('position').order('id'),
     sb.from('sj_progress').select('lesson_id,status').eq('subject_id', sub.id).eq('student_id', sid),
     sb.from('sj_vocab').select('id,word,meaning,example,status').eq('subject_id', sub.id).eq('student_id', sid).order('id', { ascending: false }),
-    sb.from('sj_sessions').select('id,session_date,topic,grade,notes').eq('subject_id', sub.id).eq('student_id', sid).eq('teacher_id', (curSub() || {}).teacher_id || S.me.id).order('session_date', { ascending: false }).order('id', { ascending: false })]);
+    sb.from('sj_sessions').select('id,session_date,topic,grade,notes').eq('subject_id', sub.id).eq('student_id', sid).order('session_date', { ascending: false }).order('id', { ascending: false })]);
   if (ls.error || pg.error || vc.error || ss.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات</div>'; return; }
   const st = {}; for (const p of pg.data) st[p.lesson_id] = p.status;
   const done = ls.data.filter((l) => st[l.id] === 'done').length, known = vc.data.filter((v) => v.status === 'known').length;
   const gs = ss.data.filter((x) => x.grade != null), avg = gs.length ? gs.reduce((a, x) => a + x.grade, 0) / gs.length : null;
-  const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الدروس', 'lessons', tab === 'lessons')}${sjTab('المفردات', 'vocab', tab === 'vocab')}${sjTab('الجلسات', 'sessions', tab === 'sessions')}</div>`;
-  const stats = `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">دروس ${arN(done)}/${arN(ls.data.length)} · كلمات ${arN(known)}/${arN(vc.data.length)} · جلسات ${arN(ss.data.length)}${avg != null ? ' · متوسط ' + arN(avg.toFixed(1)) + '/١٠' : ''}</div></div>`;
+  const tabs = rd ? '' : `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الدروس', 'lessons', tab === 'lessons')}${sjTab('المفردات', 'vocab', tab === 'vocab')}${sjTab('الجلسات', 'sessions', tab === 'sessions')}</div>`;
+  const stats = rd ? `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(sub.name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">${arN(ls.data.length)} فصل · اضغط على الفصل عشان تقراه</div></div>` : `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">دروس ${arN(done)}/${arN(ls.data.length)} · كلمات ${arN(known)}/${arN(vc.data.length)} · جلسات ${arN(ss.data.length)}${avg != null ? ' · متوسط ' + arN(avg.toFixed(1)) + '/١٠' : ''}</div></div>`;
   let body = '', fab = '';
   if (tab === 'lessons') {
     const kinds = [['lesson', 'الدروس'], ['grammar', 'القواعد']];
-    body = kinds.map(([k, t]) => { const a = ls.data.filter((l) => l.kind === k); if (!a.length) return ''; return `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${t}</div>` + a.map((l) => { const s = st[l.id] || 'todo'; return `<div class="row sjls" data-id="${l.id}" data-s="${s}"><div class="mid"><div class="nm">${l.level ? `<small style="color:var(--mu)">${esc(l.level)} · </small>` : ''}${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div>${sjBadge(SJS, s)}</div>`; }).join(''); }).join('') || '<div class="empty">المدرّس لسه مضافش دروس</div>';
+    body = kinds.map(([k, t]) => { const a = ls.data.filter((l) => l.kind === k); if (!a.length) return ''; return (rd ? '' : `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${t}</div>`) + a.map((l) => { const s = st[l.id] || 'todo'; return `<div class="row sjls" data-id="${l.id}" data-s="${s}"><div class="mid"><div class="nm">${l.level ? `<small style="color:var(--mu)">${esc(l.level)} · </small>` : ''}${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div>${rd && !teacher ? '' : sjBadge(SJS, s)}</div>`; }).join(''); }).join('') || '<div class="empty">المدرّس لسه مضافش دروس</div>';
   } else if (tab === 'vocab') {
     body = vc.data.map((v) => `<div class="row sjv" data-id="${v.id}" data-s="${v.status}"><div class="mid"><div class="nm" dir="auto">${esc(v.word)}${v.meaning ? ` <small style="color:var(--mu)">— ${esc(v.meaning)}</small>` : ''}</div>${v.example ? `<div class="ls" dir="auto">${esc(v.example)}</div>` : ''}</div>${sjBadge(SJV, v.status)}${teacher ? `<button class="ib sjvd" data-id="${v.id}" style="margin-inline-start:6px;color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش كلمات</div>';
     if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
@@ -389,7 +418,8 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
   const re = (t) => sjStudent(sub, sid, name, teacher, t || tab);
   box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => re(b.dataset.t)));
   const bk = box.querySelector('#sjb'); if (bk) bk.onclick = () => genericHome(sub);
-  if (teacher) box.querySelectorAll('.sjls').forEach((r) => (r.onclick = async () => { const n = sjNext(SJS, r.dataset.s); const e = await sb.rpc('set_lesson_status', { p_student: sid, p_lesson: +r.dataset.id, p_status: n }); if (e.error) toast('مقدرتش أحدّث'); re(); }));
+  box.querySelectorAll('.sjls').forEach((r) => (r.onclick = () => { const l = ls.data.find((x) => x.id == r.dataset.id); if (!l) return;
+    lessonSheet(l, teacher ? { label: SJS[r.dataset.s][0], next: async () => { const n = sjNext(SJS, r.dataset.s); const e = await sb.rpc('set_lesson_status', { p_student: sid, p_lesson: +r.dataset.id, p_status: n }); if (e.error) toast('مقدرتش أحدّث'); re(); } } : null); }));
   box.querySelectorAll('.sjv').forEach((r) => (r.onclick = async () => { const e = await sb.rpc('set_vocab_status', { p_id: +r.dataset.id, p_status: sjNext(SJV, r.dataset.s) }); if (e.error) toast('مقدرتش أحدّث'); re(); }));
   box.querySelectorAll('.sjvd').forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); if (!confirm('تحذف الكلمة؟')) return; await sb.rpc('delete_vocab', { p_id: +b.dataset.id }); re(); }));
   box.querySelectorAll('.sjsd').forEach((b) => (b.onclick = async () => { if (!confirm('تحذف الجلسة؟')) return; await sb.rpc('delete_sj_session', { p_id: +b.dataset.id }); re(); }));
@@ -520,13 +550,29 @@ function recitationSheet(sid, name) {
     s.remove(); studentProgress(sid, name, true);
   };
 }
+const RECS = [['Husary_128kbps', 'الشيخ الحصري'], ['Alafasy_128kbps', 'الشيخ مشاري العفاسي'], ['Abdul_Basit_Murattal_192kbps', 'الشيخ عبد الباسط (مرتل)'], ['Minshawy_Murattal_128kbps', 'الشيخ المنشاوي (مرتل)']];
+function quranPlayer(s, num, total) {
+  const au = new Audio(); au.preload = 'auto'; let cur = 1, on = false;
+  const sel = s.querySelector('#qr'), btn = s.querySelector('#qpl'), now = s.querySelector('#qnow'), rep = s.querySelector('#qrep');
+  sel.value = localStorage.getItem('wanas_rec') || RECS[0][0];
+  const url = (a) => `https://everyayah.com/data/${sel.value}/${String(num).padStart(3, '0')}${String(a).padStart(3, '0')}.mp3`;
+  const ui = () => { btn.textContent = on ? '⏸ إيقاف' : '▶ استمع للسورة'; now.textContent = on ? `آية ${arN(cur)} من ${arN(total)}` : ''; s.querySelectorAll('[data-a]').forEach((c) => { c.style.outline = on && +c.dataset.a === cur ? '2px solid var(--v)' : ''; }); };
+  const fail = () => { on = false; ui(); now.textContent = 'مقدرتش أشغّل الصوت، اتأكد من النت'; };
+  const play = (a) => { cur = a; on = true; au.src = url(a); au.play().catch(fail); ui(); const c = s.querySelector(`[data-a="${a}"]`); if (c) c.scrollIntoView({ block: 'nearest' }); };
+  au.onended = () => { if (!s.isConnected) return; if (rep.checked) return play(cur); if (cur < total) play(cur + 1); else { on = false; ui(); } };
+  au.onerror = fail;
+  btn.onclick = () => { if (on) { au.pause(); on = false; ui(); } else play(cur); };
+  sel.onchange = () => { localStorage.setItem('wanas_rec', sel.value); if (on) play(cur); };
+  s.querySelectorAll('[data-a]').forEach((c) => { c.style.cursor = 'pointer'; c.addEventListener('click', () => play(+c.dataset.a)); });
+  new MutationObserver((m, ob) => { if (!s.isConnected) { au.pause(); au.removeAttribute('src'); ob.disconnect(); } }).observe(document.body, { childList: true });
+}
 async function surahSheet(sid, name, teacher, num) {
   const q = S.qs.find((x) => x.num === num);
   const { data, error } = await sb.from('quran_progress').select('ayah,status').eq('student_id', sid).eq('surah', num).limit(300);
   if (error) return toast('مقدرتش أحمّل السورة');
   const st = {}; for (const r of data) st[r.ayah] = r.status;
-  let cells = ''; for (let a = 1; a <= q.ayahs; a++) { const c = st[a] ? QST[st[a]][1] : 'var(--trk)'; cells += `<span style="display:inline-block;min-width:30px;text-align:center;padding:4px 2px;margin:2px;border-radius:6px;font-size:12px;background:${c};color:${st[a] ? '#fff' : '#444'}">${arN(a)}</span>`; }
-  const s = sheet(`<h3>${esc(q.name_ar)} · ${arN(q.ayahs)} آية</h3><div style="max-height:34vh;overflow:auto;direction:rtl">${cells}</div>
+  let cells = ''; for (let a = 1; a <= q.ayahs; a++) { const c = st[a] ? QST[st[a]][1] : 'var(--trk)'; cells += `<span data-a="${a}" style="display:inline-block;min-width:30px;text-align:center;padding:4px 2px;margin:2px;border-radius:6px;font-size:12px;background:${c};color:${st[a] ? '#fff' : '#444'}">${arN(a)}</span>`; }
+  const s = sheet(`<h3>${esc(q.name_ar)} · ${arN(q.ayahs)} آية</h3><div style="background:var(--vl);border-radius:16px;padding:10px;margin-bottom:10px"><select id="qr" style="width:100%;padding:8px;border-radius:10px;margin-bottom:8px">${RECS.map((r) => `<option value="${r[0]}">${r[1]}</option>`).join('')}</select><div style="display:flex;gap:8px;align-items:center"><button class="btn" id="qpl" style="flex:1;margin:0">▶ استمع للسورة</button><label style="font-size:13px;white-space:nowrap"><input type="checkbox" id="qrep"> كرّر الآية</label></div><div id="qnow" style="font-size:13px;color:var(--vt);margin-top:6px;min-height:16px"></div><div style="font-size:11px;color:var(--mu)">اضغط على رقم الآية عشان تسمعها. الصوت من everyayah.com</div></div><div style="max-height:34vh;overflow:auto;direction:rtl">${cells}</div>
     ${teacher ? `<div style="display:flex;gap:8px;align-items:center;margin:12px 0"><label style="flex:1">من آية<input id="rf" type="number" min="1" max="${q.ayahs}" value="1" style="width:100%"></label><label style="flex:1">لآية<input id="rt" type="number" min="1" max="${q.ayahs}" value="${q.ayahs}" style="width:100%"></label></div>
     <div class="err" id="aerr"></div>
     <button class="btn" data-s="memorized" style="background:${QST.memorized[1]}">محفوظ</button>
@@ -542,6 +588,7 @@ async function surahSheet(sid, name, teacher, num) {
     if (error) { e.textContent = 'مقدرتش أحفظ'; return; }
     s.remove(); studentProgress(sid, name, true).then(() => surahSheet(sid, name, true, num));
   }));
+  quranPlayer(s, num, q.ayahs);
 }
 
 function renderListIf() { if (!S.cur && S.me && S.view !== 'quran') renderList(); }
@@ -618,7 +665,7 @@ function profileSheet() {
     <button class="btn sec" id="del" style="color:#c0262d">🗑 مسح حسابي نهائي</button>`);
   const file = s.querySelector('#file'); let photo = null;
   s.querySelector('#ph').onclick = () => file.click();
-  file.onchange = async () => { if (file.files[0]) { photo = await resizeImage(file.files[0], 256, 0.85); s.querySelector('#pav').innerHTML = avatar({ ...S.me, photo }); } };
+  file.onchange = async () => { if (file.files[0]) { photo = await resizeImage(file.files[0], 480, 0.82); s.querySelector('#pav').innerHTML = avatar({ ...S.me, photo }); } };
   s.querySelector('#save').onclick = async () => {
     try { const name = s.querySelector('#pn').value.trim(); if (!name) throw new Error('bad_name');
       const { error } = await sb.from('profiles').update({ name: name.slice(0, 40), bio: s.querySelector('#pb').value.trim().slice(0, 160) || null, ...(photo ? { photo } : {}) }).eq('id', S.me.id); fail(error);
@@ -1247,9 +1294,19 @@ async function initPush() {
 // ---------- phone Back button: every screen / sheet / viewer is a history layer ----------
 function openViewer(src) {
   const v = document.getElementById('viewer'); if (!v || !src) return;
-  v.querySelector('img').src = src;
+  const img = v.querySelector('img'); img.src = src;
+  let sc = 1, tx = 0, ty = 0, d0 = 0, s0 = 1, lx = 0, ly = 0, lt = 0;
+  const ap = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`; };
+  const reset = () => { sc = 1; tx = 0; ty = 0; ap(); };
+  reset();
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  img.ontouchstart = (e) => { if (e.touches.length === 2) { d0 = dist(e.touches); s0 = sc; } else if (e.touches.length === 1) { lx = e.touches[0].clientX; ly = e.touches[0].clientY; const n = Date.now(); if (n - lt < 300) { sc = sc > 1 ? 1 : 2.5; if (sc === 1) { tx = 0; ty = 0; } ap(); } lt = n; } };
+  img.ontouchmove = (e) => { if (e.touches.length === 2 && d0) { sc = Math.min(5, Math.max(1, s0 * dist(e.touches) / d0)); ap(); e.preventDefault(); } else if (e.touches.length === 1 && sc > 1) { tx += e.touches[0].clientX - lx; ty += e.touches[0].clientY - ly; lx = e.touches[0].clientX; ly = e.touches[0].clientY; ap(); e.preventDefault(); } };
+  img.ontouchend = () => { d0 = 0; if (sc < 1.05) reset(); };
+  img.ondblclick = () => { sc = sc > 1 ? 1 : 2.5; if (sc === 1) { tx = 0; ty = 0; } ap(); };
   if (!v.querySelector('.vx')) { const x = document.createElement('button'); x.className = 'vx'; x.setAttribute('aria-label', 'قفل'); x.textContent = '✕'; v.appendChild(x); }
-  v.onclick = () => v.classList.add('hidden'); v.classList.remove('hidden');
+  v.onclick = (e) => { if (e.target.tagName !== 'IMG') v.classList.add('hidden'); };
+  v.classList.remove('hidden');
 }
 const NAV = { pushed: 0, wait: false, until: 0 };
 function navLayers() {
