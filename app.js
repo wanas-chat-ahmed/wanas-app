@@ -1,6 +1,31 @@
 // ونس client. Plain JS, no build step. Talks to the server over REST + WebSocket.
 (() => {
 'use strict';
+// ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
+const BUILD = '8';
+window.WANAS_BUILD = BUILD;
+let updating = false;
+async function checkUpdate() {
+  if (updating) return;
+  let v;
+  try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; v = String((await r.json()).v); } catch { return; }
+  if (!v || v === BUILD) return;
+  const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet') || (typeof REC !== 'undefined' && REC.mr);
+  if (busy) {
+    if (!document.getElementById('upd')) {
+      const b = document.createElement('div'); b.id = 'upd'; b.className = 'upd'; b.textContent = 'في تحديث جديد، اضغط هنا للتحديث';
+      b.onclick = () => go(v); document.body.appendChild(b);
+    }
+    return;
+  }
+  go(v);
+}
+function go(v) { updating = true; location.replace(location.pathname + '?v=' + encodeURIComponent(v)); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+window.addEventListener('focus', checkUpdate);
+setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(); }, 120000);
+checkUpdate();
+
 const $app = document.getElementById('app');
 const LS = { get: (k) => localStorage.getItem(k), set: (k, v) => localStorage.setItem(k, v), del: (k) => localStorage.removeItem(k) };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
