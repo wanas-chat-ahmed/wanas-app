@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '9';
+const BUILD = '10';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -41,7 +41,7 @@ const SB_KEY = 'sb_publishable_QeMbFx5H3mRw9_kWdSBarw_a5owjM4y'; // publishable 
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 const emailOf = (wid) => `${String(wid).trim().toLowerCase()}@wanas-users.example.com`;
 
-const S = { wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
+const S = { mutes: new Set(), pushOn: false, wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
 const ONLINE_MS = 45000;
 
 async function signupCall(body) {
@@ -54,6 +54,7 @@ async function signupCall(body) {
 const fail = (error) => { if (error) { const m = (error.message || '').trim(); throw new Error(/not_found|self|unauthorized/.test(m) ? m.match(/not_found|self|unauthorized/)[0] : /fetch|network/i.test(m) ? 'net' : 'server'); } };
 
 async function logout() {
+  try { await disablePush(); } catch {}
   teardownRealtime(); await sb.auth.signOut();
   S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.wp = { all: null, chats: {} }; S.isAdmin = false; render();
 }
@@ -136,6 +137,7 @@ function onProfile(p) {
 const sortC = (a, b) => new Date(b.last?.created_at || 0) - new Date(a.last?.created_at || 0);
 
 function notify(c, msg) {
+  if (S.pushOn) return; // the server already pushes when you are away
   if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
     try { new Notification(c.name, { body: previewOf(msg), icon: 'icon.svg' }); } catch {}
   }
@@ -231,6 +233,7 @@ function renderList() {
   document.querySelectorAll('.row').forEach((r) => (r.onclick = () => openChat(r.dataset.id)));
   document.getElementById('add').onclick = addSheet;
   document.getElementById('me').onclick = profileSheet;
+  pushBanner();
 }
 function updateConn() { const el = document.getElementById('conn'); if (el) el.textContent = S.wsOk ? '' : 'بيتصل…'; const b = document.getElementById('connbar'); if (b) b.classList.toggle('hidden', S.wsOk); }
 
@@ -273,7 +276,7 @@ function profileSheet() {
     <label class="field"><span>نبذة عنك</span><textarea id="pb" rows="2" maxlength="160" placeholder="اكتب سطر أو اتنين عن نفسك">${esc(S.me.bio)}</textarea></label>
     <div class="err" id="perr"></div>
     <button class="btn" id="save">حفظ</button>
-    <button class="btn sec" id="notif">تفعيل الإشعارات</button>
+    <button class="btn sec" id="notif">${S.pushOn ? '🔔 الإشعارات شغالة (دوس للإيقاف)' : '🔔 تفعيل الإشعارات'}</button>
     ${S.isAdmin ? '<button class="btn sec" id="stats">📊 إحصائيات</button>' : ''}
     <button class="btn sec" id="out" style="color:#c0262d">تسجيل خروج</button>`);
   const file = s.querySelector('#file'); let photo = null;
@@ -286,9 +289,9 @@ function profileSheet() {
     catch (x) { s.querySelector('#perr').textContent = ERR[x.message] || 'مقدرتش أحفظ'; }
   };
   s.querySelector('#notif').onclick = async () => {
-    if (!('Notification' in window)) return (s.querySelector('#perr').textContent = 'المتصفح ده مبيدعمش الإشعارات');
-    const p = await Notification.requestPermission();
-    s.querySelector('#perr').textContent = p === 'granted' ? 'تمام، هتوصلك إشعارات لما التطبيق يكون مفتوح في الخلفية' : 'الإشعارات مرفوضة من المتصفح';
+    const b = s.querySelector('#notif');
+    if (S.pushOn) { await disablePush(); b.textContent = '🔔 تفعيل الإشعارات'; return; }
+    if (await enablePush()) b.textContent = '🔔 الإشعارات شغالة (دوس للإيقاف)';
   };
   if (s.querySelector('#stats')) s.querySelector('#stats').onclick = () => { s.remove(); statsSheet(); };
   s.querySelector('#out').onclick = () => { s.remove(); logout(); };
@@ -302,7 +305,9 @@ function contactSheet(id) {
     <span class="idbox">${esc(c.wanasId)}</span>
     <small style="color:var(--mu)">${esc(lastSeenText(c))}</small></div>
     <div class="about"><span>النبذة</span><p>${c.bio ? esc(c.bio) : '<i>لسه مكتبش نبذة</i>'}</p></div>
+    <button class="btn sec" id="mt">${S.mutes.has(id) ? '🔔 إلغاء كتم الإشعارات' : '🔕 كتم إشعارات المحادثة دي'}</button>
     <button class="btn sec" id="cl">قفل</button>`);
+  s.querySelector('#mt').onclick = async () => { await toggleMute(id); s.remove(); toast(S.mutes.has(id) ? 'المحادثة اتكتمت، مش هتوصلك إشعارات منها' : 'الإشعارات رجعت للمحادثة دي'); };
   s.querySelector('#cl').onclick = () => s.remove();
 }
 
@@ -407,6 +412,7 @@ async function openChat(id) {
   markRead(S.cur); renderChatHeader();
 }
 function renderChat() {
+  const pb = document.getElementById('pushbar'); if (pb) pb.remove();
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
@@ -697,10 +703,78 @@ window.WANAS_CALL = () => { const c = S.call; return c ? { state: c.state, role:
 window.WANAS_CALL_STATS = async () => { const c = S.call; if (!c || !c.pc) return null; let rx = 0, tx = 0; (await c.pc.getStats()).forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') rx += r.bytesReceived || 0; if (r.type === 'outbound-rtp' && r.kind === 'audio') tx += r.bytesSent || 0; }); const snd = c.stream ? c.stream.getAudioTracks()[0] : null; return { rx, tx, trackEnabled: snd ? snd.enabled : null }; };
 const callLine = (m, mine) => m.body === 'call' ? `📞 مكالمة صوتية - ${arDigits(fmtDur(m.dur_ms || 0))}` : m.body === 'missed' ? (mine ? '📵 مكالمة بدون رد' : '📵 مكالمة فائتة') : (mine ? '📵 المكالمة اترفضت' : '📵 رفضت المكالمة');
 
+// ---------- web push (service worker + VAPID; subscriptions live in a private table) ----------
+const VAPID_PUB = 'BLTy7opI_LHunYo8y1eQchOPp3pIqiR0RtoxeWENKzKoznB7gG2h5UwQziSfipYe5sbyOQ85FltZoNXZ3CCdRkI';
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const b64u = (s) => { const r = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((ch) => ch.charCodeAt(0))); };
+const IOS_STEPS = 'عشان الإشعارات تشتغل على الأيفون لازم تضيف ونس للشاشة الرئيسية:\n١. افتح ونس في Safari\n٢. دوس على زرار المشاركة (المربع اللي فيه سهم ⬆️) تحت\n٣. اختار «إضافة إلى الشاشة الرئيسية» وبعدين «إضافة»\n٤. افتح ونس من الأيقونة الجديدة وفعّل الإشعارات\n(محتاج iOS 16.4 أو أحدث)';
+async function currentSub() { try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch { return null; } }
+async function saveSub(sub) {
+  const j = sub.toJSON(); if (!j.endpoint || !j.keys) return false;
+  const { data } = await sb.from('push_subscriptions').select('id').eq('endpoint', j.endpoint);
+  if (data && data.length) return true;
+  const { error } = await sb.from('push_subscriptions').insert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+  return !error;
+}
+async function subscribePush() {
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUB) });
+  if (await saveSub(sub)) return true;
+  // this browser endpoint may still belong to a previous account: start a fresh one
+  await sub.unsubscribe(); sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUB) });
+  return saveSub(sub);
+}
+async function disablePush() {
+  const sub = await currentSub();
+  if (sub) { await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+  S.pushOn = false;
+}
+async function enablePush() {
+  if (isIOS && !isStandalone) { iosSheet(); return false; }
+  if (!pushSupported()) { toast(isIOS ? 'لازم تحدّث الأيفون لـ iOS 16.4 أو أحدث عشان الإشعارات' : 'المتصفح ده مبيدعمش الإشعارات'); return false; }
+  const p = await Notification.requestPermission();
+  if (p !== 'granted') { toast('الإشعارات مرفوضة. فعّلها من إعدادات المتصفح للموقع ده'); return false; }
+  try { S.pushOn = await subscribePush(); } catch { S.pushOn = false; }
+  if (!S.pushOn) toast('معرفتش أفعّل الإشعارات، جرّب تاني');
+  return S.pushOn;
+}
+function iosSheet() { const s = sheet(`<h3>الإشعارات على الأيفون</h3><p style="white-space:pre-line;line-height:1.9">${esc(IOS_STEPS)}</p><button class="btn" id="ok">تمام</button>`); s.querySelector('#ok').onclick = () => s.remove(); }
+function openFromPush(id) { if (!id || !S.me) return; if (byId(id)) openChat(id); else refreshContacts().then(() => byId(id) && openChat(id)); }
+async function loadMutes() { const { data } = await sb.from('chat_mutes').select('chat_id'); S.mutes = new Set((data || []).map((r) => r.chat_id)); }
+async function toggleMute(id) {
+  if (S.mutes.has(id)) { await sb.from('chat_mutes').delete().eq('chat_id', id); S.mutes.delete(id); }
+  else { const { error } = await sb.from('chat_mutes').insert({ chat_id: id }); if (!error) S.mutes.add(id); }
+}
+function pushBanner() {
+  const old = document.getElementById('pushbar'); if (old) old.remove();
+  if (!S.me || S.cur || S.pushOn || !document.querySelector('.fab')) return;
+  if (!('Notification' in window) && !isIOS) return;
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return;
+  if (Date.now() - Number(LS.get('wanas_pushdis') || 0) < 3 * 86400000) return;
+  const b = document.createElement('div'); b.id = 'pushbar'; b.className = 'pbar';
+  b.innerHTML = `<span>🔔 فعّل الإشعارات عشان توصلك الرسايل حتى والتطبيق مقفول</span><button id="pb-on">${isIOS && !isStandalone ? 'إزاي؟' : 'تفعيل'}</button><button id="pb-no" class="x">✕</button>`;
+  document.body.appendChild(b);
+  b.querySelector('#pb-on').onclick = async () => { const ok = await enablePush(); if (ok) b.remove(); };
+  b.querySelector('#pb-no').onclick = () => { LS.set('wanas_pushdis', String(Date.now())); b.remove(); };
+}
+async function initPush() {
+  if (!('serviceWorker' in navigator)) return;
+  try { await navigator.serviceWorker.register('sw.js'); } catch { return; }
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open-chat') openFromPush(e.data.chat); });
+  if (pushSupported() && Notification.permission === 'granted') { try { S.pushOn = await subscribePush(); } catch { S.pushOn = false; } }
+  else S.pushOn = false;
+  pushBanner();
+}
+
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
-  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); render();
+  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); render();
+  initPush();
+  const q = new URLSearchParams(location.search).get('chat'); if (q) { history.replaceState(null, '', location.pathname); openFromPush(q); }
 }
 boot();
 })();
