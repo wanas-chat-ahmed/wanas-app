@@ -246,3 +246,14 @@ body.nav .fab{animation:pop .35s var(--ease) .1s both}
 .gopt{display:block;width:100%;border:2px solid var(--ln);background:var(--card);color:inherit;border-radius:14px;padding:14px;font-size:20px;margin:8px 0;text-align:left}
 .gopt.ok{border-color:#16a34a;background:#16a34a22}.gopt.bad{border-color:#dc2626;background:#dc262622}
 .gfb{border-radius:14px;padding:10px 14px;margin-top:10px;font-weight:800}.gfb.ok{background:#16a34a22;color:#15803d}.gfb.bad{background:#dc262622;color:#b91c1c}
+
+.cmin{position:absolute;top:calc(14px + env(safe-area-inset-top));inset-inline-start:14px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:24px;line-height:1}
+.callov.mini{inset:0 0 auto 0;height:calc(54px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;background:#15803d;flex-direction:row;justify-content:flex-start;gap:10px}
+.callov.mini .cmv{flex:1;display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;font-size:16px}
+.callov.mini .cmv b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.callov.mini .cmd{width:10px;height:10px;border-radius:50%;background:#fff;animation:cmp 1.4s infinite}
+.callov.mini .cb{width:38px;height:38px;font-size:17px}
+@keyframes cmp{50%{opacity:.25}}
+body.callmin #app,body.callmin .app{padding-top:calc(54px + env(safe-area-inset-top))}
+body.callmin .sheet,body.callmin #viewer{top:calc(54px + env(safe-area-inset-top))}
+.callov.mini{align-items:center}.callov.mini .cst{font-size:16px;opacity:1;margin:0}
