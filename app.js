@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '22';
+const BUILD = '23';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -75,6 +75,7 @@ function codeSheet(code, title) {
   ok.onclick = () => o.remove();
 }
 function renderRecover() {
+  window.__authMode = 'recover';
   $app.innerHTML = `<div class="screen auth"><div class="card"><img class="logo" src="icon.svg" alt="">
     <h1>نسيت كلمة السر</h1><p class="sub">اكتب الـ ID وكود الاسترجاع اللي خدته وقت التسجيل</p>
     <form id="f" autocomplete="off">
@@ -229,6 +230,7 @@ function render() {
 }
 
 function renderAuth(mode = 'login') {
+  window.__authMode = mode;
   $app.innerHTML = `
   <div class="screen auth"><div class="card">
     <img class="logo" src="icon.svg" alt="">
@@ -465,7 +467,7 @@ async function studentProgress(sid, name, teacher) {
         S.view = null; openChat(sid);
       } catch { toast('مقدرتش أفتح المحادثة، جرّب تاني'); }
     };
-    box.querySelector('#sback').onclick = teacherHome; box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
+    box.querySelector('#sback').onclick = () => teacherHome(); box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
   loadRecitations(sid, name, teacher); loadRevision(sid);
   box.querySelectorAll('.qs').forEach((r) => (r.onclick = () => surahSheet(sid, name, teacher, +r.dataset.n)));
 }
@@ -720,6 +722,7 @@ function contactSheet(id) {
   };
   s.querySelector('#mt').onclick = async () => { await toggleMute(id); s.remove(); toast(S.mutes.has(id) ? 'المحادثة اتكتمت، مش هتوصلك إشعارات منها' : 'الإشعارات رجعت للمحادثة دي'); };
   s.querySelector('#cl').onclick = () => s.remove();
+  const sav = s.querySelector('.av'); if (sav && c.photo) { sav.style.cursor = 'pointer'; sav.onclick = () => openViewer(c.photo); }
 }
 
 
@@ -900,6 +903,7 @@ function renderChatHeader() {
   const hd = document.getElementById('hd'); const c = byId(S.cur); if (!hd || !c) return;
   hd.style.cursor = 'pointer'; hd.onclick = () => contactSheet(S.cur);
   hd.innerHTML = `${avatar(c, 'sm', true)}<div class="top" style="padding:0;background:none"><h2>${esc(c.name)}<small>${esc(lastSeenText(c))}</small></h2></div>`;
+  const hav = hd.querySelector('.av'); if (hav && c.photo) hav.onclick = (e) => { e.stopPropagation(); openViewer(c.photo); };
 }
 function renderChatBody(scroll) {
   const box = document.getElementById('msgs'); if (!box) return;
@@ -914,7 +918,7 @@ function renderChatBody(scroll) {
   }
   box.innerHTML = html;
   box.querySelectorAll('.vn').forEach((el) => { el.querySelector('.vplay').onclick = () => playVoice(el.dataset.i); syncVoice(el); });
-  box.querySelectorAll('img').forEach((i) => (i.onclick = () => { const v = document.getElementById('viewer'); v.querySelector('img').src = i.src; v.classList.remove('hidden'); v.onclick = () => v.classList.add('hidden'); }));
+  box.querySelectorAll('img').forEach((i) => (i.onclick = () => openViewer(i.src)));
   if (scroll || near) box.scrollTop = box.scrollHeight;
 }
 
@@ -1240,6 +1244,41 @@ async function initPush() {
   pushBanner();
 }
 
+// ---------- phone Back button: every screen / sheet / viewer is a history layer ----------
+function openViewer(src) {
+  const v = document.getElementById('viewer'); if (!v || !src) return;
+  v.querySelector('img').src = src;
+  if (!v.querySelector('.vx')) { const x = document.createElement('button'); x.className = 'vx'; x.setAttribute('aria-label', 'قفل'); x.textContent = '✕'; v.appendChild(x); }
+  v.onclick = () => v.classList.add('hidden'); v.classList.remove('hidden');
+}
+const NAV = { pushed: 0, wait: false, until: 0 };
+function navLayers() {
+  const L = [], q = (s) => document.querySelector(s);
+  if (!S.me) { if (window.__authMode && window.__authMode !== 'login') L.push({ k: 'auth', close: () => renderAuth('login') }); return L; }
+  if (S.view === 'quran') L.push({ k: 'quran', close: () => q('#qback')?.click() });
+  if (!S.cur && q('#qbody #sback, #qbody #sjb')) L.push({ k: 'detail', close: () => q('#qbody #sback, #qbody #sjb')?.click() });
+  if (S.cur) L.push({ k: 'chat', close: () => q('#back')?.click() });
+  const v = q('#viewer'); if (v && !v.classList.contains('hidden')) L.push({ k: 'viewer', close: () => v.classList.add('hidden') });
+  if (q('#call')) L.push({ k: 'call', close: () => toast('اقفل المكالمة الأول') });
+  document.querySelectorAll('.sheet').forEach((s) => L.push({ k: 'sheet', close: () => s.dispatchEvent(new MouseEvent('click', { bubbles: true })) }));
+  return L;
+}
+let navT = 0;
+function navSync() {
+  if (NAV.wait) return;
+  const n = navLayers().length;
+  if (n > NAV.pushed && Date.now() < NAV.until) { clearTimeout(navT); navT = setTimeout(navSync, 250); return; }
+  if (n > NAV.pushed) { while (NAV.pushed < n) { history.pushState({ w: 1 }, ''); NAV.pushed++; } }
+  else if (n < NAV.pushed) { const d = NAV.pushed - n; NAV.pushed = n; NAV.wait = true; history.go(-d); setTimeout(() => { if (NAV.wait) { NAV.wait = false; navSync(); } }, 600); }
+}
+window.addEventListener('popstate', () => {
+  if (NAV.wait) { NAV.wait = false; setTimeout(navSync, 0); return; }
+  if (NAV.pushed > 0) NAV.pushed--;
+  const L = navLayers(); const top = L[L.length - 1]; if (top) { NAV.until = (top.k === 'detail' || top.k === 'quran') ? Date.now() + 2500 : 0; top.close(); }
+  setTimeout(navSync, 60);
+});
+window.__nav = { NAV, navLayers, openViewer, statsSheet, usersSheet };
+new MutationObserver(() => { clearTimeout(navT); navT = setTimeout(navSync, 30); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
