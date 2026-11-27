@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '26';
+const BUILD = '27';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -1339,7 +1339,7 @@ function callUI() {
   if (c.state === 'incoming') c.min = false;
   el.classList.toggle('mini', !!c.min); document.body.classList.toggle('callmin', !!c.min);
   if (c.min) {
-    el.innerHTML = `<div class="cmv" id="c-open"><span class="cmd"></span><b>${esc(p.name)}</b><span id="cst" class="cst"></span></div><button class="cb ${c.muted ? 'on' : ''}" id="c-mute">${c.muted ? '🔇' : '🎙️'}</button><button class="cb red" id="c-end">✖</button>`;
+    el.innerHTML = `<div class="cmv" id="c-open"><span class="cmd"></span><b>${esc(p.name)}</b><span id="cst" class="cst"></span></div><button class="cb ${c.muted ? 'on' : ''}" id="c-mute">${c.muted ? '🔇' : '🎙️'}</button>`;
   } else {
     el.innerHTML = `${c.state !== 'incoming' ? '<button class="cmin" id="c-min" title="تصغير">⌄</button>' : ''}<div class="cav">${avatar(p, '')}</div><h2>${esc(p.name)}</h2><div id="cst" class="cst"></div><div class="cbar">${btns}</div>`;
   }
@@ -1400,11 +1400,42 @@ function makePC(c) {
   };
   pc.onconnectionstatechange = () => {
     if (S.call !== c) return; const st = pc.connectionState;
-    if (st === 'connected') { clearTimeout(c.dcT); if (c.state !== 'active') { c.state = 'active'; c.t0 = Date.now(); clearTimeout(c.connT); c.tick = setInterval(callStatus, 1000); callUI(); } }
+    if (st === 'connected') { clearTimeout(c.dcT); c.rec = false; clearTimeout(c.recT); if (c.state !== 'active') { c.state = 'active'; c.t0 = Date.now(); clearTimeout(c.connT); c.tick = setInterval(callStatus, 1000); callUI(); keepAlive(c); } }
+    else if (c.state === 'active' && (st === 'failed' || st === 'disconnected')) recoverCall(c);
     else if (st === 'failed') endCall('failed', FAILMSG);
     else if (st === 'disconnected') { clearTimeout(c.dcT); c.dcT = setTimeout(() => { if (S.call === c && pc.connectionState !== 'connected') endCall('failed', 'النت قطع، المكالمة خلصت'); }, 8000); }
   };
 }
+// keep an active call alive: short network drops get an ICE restart for up to 45s, the screen stays awake, audio is resumed when the page comes back
+const RECOVER_MS = 45000;
+function recoverCall(c) {
+  if (c.rec || S.call !== c) return; c.rec = true; c.recStart = Date.now();
+  const step = async () => {
+    if (S.call !== c || !c.rec) return;
+    if (c.pc.connectionState === 'connected') { c.rec = false; return; }
+    if (Date.now() - c.recStart > RECOVER_MS) { c.rec = false; return endCall('failed', 'النت قطع، المكالمة خلصت'); }
+    if (c.role === 'caller') { try { const o = await c.pc.createOffer({ iceRestart: true }); await c.pc.setLocalDescription(o); await sigSend('offer', { type: o.type, sdp: o.sdp }, c); } catch {} }
+    c.recT = setTimeout(step, 4000);
+  };
+  step();
+}
+async function keepAlive(c) {
+  if (!c.guard) { c.guard = true; try { history.pushState({ g: 1 }, ''); } catch {} }
+  try { if (navigator.wakeLock && document.visibilityState === 'visible') { c.wl = await navigator.wakeLock.request('screen'); } } catch {}
+  try { if (navigator.mediaSession) { navigator.mediaSession.metadata = new MediaMetadata({ title: 'مكالمة ونس', artist: (c.profile && c.profile.name) || '' }); navigator.mediaSession.playbackState = 'playing'; } } catch {}
+}
+async function resumeCall() {
+  const c = S.call; if (!c || c.state !== 'active') return;
+  keepAlive(c);
+  if (c.audio && c.audio.paused) c.audio.play().catch(() => {});
+  const tr = c.stream && c.stream.getAudioTracks()[0];
+  if (tr && tr.readyState === 'ended') { try { const ns = await navigator.mediaDevices.getUserMedia({ audio: true }); const nt = ns.getAudioTracks()[0]; nt.enabled = !c.muted; const sn = c.pc.getSenders().find((x) => x.track && x.track.kind === 'audio') || c.pc.getSenders()[0]; if (sn) await sn.replaceTrack(nt); c.stream = ns; } catch {} }
+  if (c.pc && c.pc.connectionState !== 'connected') recoverCall(c);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumeCall(); });
+window.addEventListener('pageshow', () => resumeCall());
+window.addEventListener('online', () => resumeCall());
+window.WANAS_RECOVER = () => { const c = S.call; if (c && c.pc) { c.pc.dispatchEvent && recoverCall(c); } };
 async function flushIce(c) { const l = c.pend.splice(0); for (const x of l) { try { await c.pc.addIceCandidate(x); } catch {} } }
 // a call notification was tapped: look the invite up (RLS: only mine) and show the ringing screen if it is still ringing
 async function ringFromPush(callId, chat) {
@@ -1450,6 +1481,7 @@ function endCall(reason, note, remote) {
   try { c.pc && c.pc.close(); } catch {}
   if (c.stream) c.stream.getTracks().forEach((t) => t.stop());
   if (c.audio) { c.audio.srcObject = null; c.audio.remove(); }
+  clearTimeout(c.recT); c.rec = false; try { c.wl && c.wl.release(); } catch {} try { if (navigator.mediaSession) { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } } catch {}
   callUI(); if (note) toast(note);
   if (!remote) {
     const kind = c.state === 'calling' ? 'cancel' : reason === 'declined-local' ? 'decline' : 'end';
@@ -1576,6 +1608,7 @@ function navSync() {
   else if (n < NAV.pushed) { const d = NAV.pushed - n; NAV.pushed = n; NAV.wait = true; history.go(-d); setTimeout(() => { if (NAV.wait) { NAV.wait = false; navSync(); } }, 600); }
 }
 window.addEventListener('popstate', () => {
+  { const cc = S.call; if (cc && cc.state !== 'incoming' && !NAV.wait) { if (!cc.min) { cc.min = true; callUI(); NAV.wait = true; history.go(1); return; } if (!navLayers().length && !document.querySelector('.sheet')) { toast('المكالمة شغالة'); NAV.wait = true; history.go(1); return; } } }
   if (NAV.wait) { NAV.wait = false; setTimeout(navSync, 0); return; }
   if (NAV.pushed > 0) NAV.pushed--;
   const L = navLayers(); const top = L[L.length - 1]; if (top) { NAV.until = (top.k === 'detail' || top.k === 'quran') ? Date.now() + 2500 : 0; top.close(); }
