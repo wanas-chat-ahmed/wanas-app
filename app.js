@@ -104,7 +104,7 @@ function onMessageUpdate(msg) {
 }
 function onProfile(p) {
   const c = byId(p.id); if (!c) return;
-  Object.assign(c, { name: p.name, photo: p.photo, lastSeen: p.last_seen });
+  Object.assign(c, { name: p.name, photo: p.photo, bio: p.bio || '', lastSeen: p.last_seen });
   S.cur === c.id ? renderChatHeader() : renderListIf();
 }
 const sortC = (a, b) => new Date(b.last?.created_at || 0) - new Date(a.last?.created_at || 0);
@@ -116,7 +116,7 @@ function notify(c, msg) {
 }
 
 // ---------- data ----------
-const meOf = (p) => ({ id: p.id, wanasId: p.wanas_id, name: p.name, photo: p.photo || null, lastSeen: p.last_seen });
+const meOf = (p) => ({ id: p.id, wanasId: p.wanas_id, name: p.name, photo: p.photo || null, bio: p.bio || '', lastSeen: p.last_seen });
 async function loadMe() {
   const { data: u } = await sb.auth.getUser();
   if (!u?.user) return null;
@@ -244,6 +244,7 @@ function profileSheet() {
     <span class="idbox">${esc(S.me.wanasId)}</span>
     <small style="color:var(--mu)">ده الـ ID اللي تديه لصحابك عشان يضيفوك</small></div>
     <label class="field"><span>الاسم</span><input id="pn" maxlength="40" value="${esc(S.me.name)}"></label>
+    <label class="field"><span>نبذة عنك</span><textarea id="pb" rows="2" maxlength="160" placeholder="اكتب سطر أو اتنين عن نفسك">${esc(S.me.bio)}</textarea></label>
     <div class="err" id="perr"></div>
     <button class="btn" id="save">حفظ</button>
     <button class="btn sec" id="notif">تفعيل الإشعارات</button>
@@ -253,7 +254,7 @@ function profileSheet() {
   file.onchange = async () => { if (file.files[0]) { photo = await resizeImage(file.files[0], 256, 0.85); s.querySelector('#pav').innerHTML = avatar({ ...S.me, photo }); } };
   s.querySelector('#save').onclick = async () => {
     try { const name = s.querySelector('#pn').value.trim(); if (!name) throw new Error('bad_name');
-      const { error } = await sb.from('profiles').update({ name: name.slice(0, 40), ...(photo ? { photo } : {}) }).eq('id', S.me.id); fail(error);
+      const { error } = await sb.from('profiles').update({ name: name.slice(0, 40), bio: s.querySelector('#pb').value.trim().slice(0, 160) || null, ...(photo ? { photo } : {}) }).eq('id', S.me.id); fail(error);
       S.me = await loadMe(); s.remove(); render(); }
     catch (x) { s.querySelector('#perr').textContent = ERR[x.message] || 'مقدرتش أحفظ'; }
   };
@@ -263,6 +264,18 @@ function profileSheet() {
     s.querySelector('#perr').textContent = p === 'granted' ? 'تمام، هتوصلك إشعارات لما التطبيق يكون مفتوح في الخلفية' : 'الإشعارات مرفوضة من المتصفح';
   };
   s.querySelector('#out').onclick = () => { s.remove(); logout(); };
+}
+
+function contactSheet(id) {
+  const c = byId(id); if (!c) return;
+  const s = sheet(`<h3>معلومات الشخص</h3><div class="prof">
+    ${avatar(c, 'lg', true)}
+    <b style="font-size:20px">${esc(c.name)}</b>
+    <span class="idbox">${esc(c.wanasId)}</span>
+    <small style="color:var(--mu)">${esc(lastSeenText(c))}</small></div>
+    <div class="about"><span>النبذة</span><p>${c.bio ? esc(c.bio) : '<i>لسه مكتبش نبذة</i>'}</p></div>
+    <button class="btn sec" id="cl">قفل</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
 }
 
 function resizeImage(file, max, q) {
@@ -315,6 +328,7 @@ function renderChat() {
 }
 function renderChatHeader() {
   const hd = document.getElementById('hd'); const c = byId(S.cur); if (!hd || !c) return;
+  hd.style.cursor = 'pointer'; hd.onclick = () => contactSheet(S.cur);
   hd.innerHTML = `${avatar(c, 'sm', true)}<div class="top" style="padding:0;background:none"><h2>${esc(c.name)}<small>${esc(lastSeenText(c))}</small></h2></div>`;
 }
 function renderChatBody(scroll) {
