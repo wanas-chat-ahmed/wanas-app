@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '17';
+const BUILD = '18';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -274,14 +274,24 @@ const pctOf = (n) => (n * 100 / 6236);
 const pctTxt = (n) => arN(pctOf(n).toFixed(1)) + '٪';
 async function teacherHome(page = 20) {
   const box = document.getElementById('qbody'); if (!box) return;
-  const { data, error } = await sb.rpc('students_overview');
-  if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
-  S.qw = {}; for (const x of data) S.qw[x.id] = x.wanas_id;
+  const [ov, db] = await Promise.all([sb.rpc('students_overview'), sb.rpc('teacher_dashboard')]);
+  if (ov.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  const dm = {}; for (const x of db.data || []) dm[x.id] = x;
+  const all = ov.data.map((x) => ({ ...x, ...(dm[x.id] || {}), memorized: x.memorized }));
+  const late = (x) => x.days_since == null || x.days_since >= 7, due = (x) => (x.due_ayahs || 0) > 0;
+  const nLate = all.filter(late).length, nDue = all.filter(due).length, tot = all.reduce((a, x) => a + x.memorized, 0);
+  const f = S.qf || 'all', data = f === 'late' ? all.filter(late) : f === 'due' ? all.filter(due) : all;
+  S.qw = {}; for (const x of all) S.qw[x.id] = x.wanas_id;
+  const chip = (k, t, on) => `<button class="qchip" data-f="${k}" style="border:0;border-radius:16px;padding:6px 12px;font-size:13px;background:${on ? 'var(--v)' : '#ede7fb'};color:${on ? '#fff' : 'var(--v)'}">${t}</button>`;
+  const head = all.length ? `<div style="padding:12px 14px 0"><div style="color:var(--mu);font-size:13px">متوسط الحفظ في كل الطلاب</div><div style="font-size:26px;font-weight:800;color:var(--v)">${arN((tot * 100 / (all.length * 6236)).toFixed(1))}٪ <small style="font-size:13px;font-weight:400;color:var(--mu)">(${arN(all.length)} طالب)</small></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">${chip('all', 'الكل', f === 'all')}${chip('late', 'متأخرين ' + arN(nLate), f === 'late')}${chip('due', 'مراجعة مستحقة ' + arN(nDue), f === 'due')}</div></div>` : '';
   const rows = data.slice(0, page).map((s) => `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
     <div class="ls">${esc(s.wanas_id)} · محفوظ ${pctTxt(s.memorized)}${s.revision ? ' · مراجعة ' + arN(s.revision) + ' آية' : ''}</div>
+    <div style="font-size:12px;margin:2px 0;color:${late(s) ? '#dc2626' : 'var(--mu)'}">${s.days_since == null ? 'لسه ماسمّعش' : s.days_since === 0 ? 'سمّع النهارده' : 'آخر تسميع من ' + arN(s.days_since) + ' يوم'}${due(s) ? ' · <b style="color:#dc2626">مراجعة مستحقة ' + arN(s.due_ayahs) + ' آية</b>' : ''}</div>
     <div class="qbar">${pbar(s.memorized, s.learning, s.revision, 6236)}</div></div></div>`).join('');
-  box.innerHTML = `<div class="list">${rows || '<div class="empty">لسه مفيش طلاب. دوس على ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}${data.length > page ? `<button class="btn sec" id="more" style="margin:10px">عرض الباقي (${arN(data.length - page)})</button>` : ''}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
+  box.innerHTML = `${head}<div class="list">${rows || '<div class="empty">لسه مفيش طلاب. دوس على ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}${data.length > page ? `<button class="btn sec" id="more" style="margin:10px">عرض الباقي (${arN(data.length - page)})</button>` : ''}</div><button class="fab" id="qadd" title="إضافة طالب">＋</button>`;
   box.querySelectorAll('.row').forEach((r) => (r.onclick = () => studentProgress(r.dataset.id, r.dataset.n, true)));
+  box.querySelectorAll('.qchip').forEach((c) => (c.onclick = () => { S.qf = c.dataset.f; teacherHome(); }));
   const mb = box.querySelector('#more'); if (mb) mb.onclick = () => teacherHome(page + 20);
   box.querySelector('#qadd').onclick = addStudentSheet;
 }
@@ -311,6 +321,8 @@ async function studentProgress(sid, name, teacher) {
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
     <div style="padding:0 14px 6px;display:flex;align-items:center"><b style="flex:1">جلسات التسميع</b>${teacher ? '<button class="btn" id="newrc" style="width:auto;padding:8px 16px;margin:0">＋ تسميع جديد</button>' : ''}</div>
     <div id="rchist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
+    <div style="padding:0 14px 6px"><b>طابور المراجعة</b> <small style="color:var(--mu)">(محفوظ من أكتر من ٣٠ يوم ومتسمّعش)</small></div>
+    <div id="rqlist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
     <div style="padding:0 14px"><b>الخريطة</b></div>
     <div class="list">${surahs}</div>`;
   if (teacher) { box.querySelector('#schat').onclick = async () => {
@@ -320,8 +332,16 @@ async function studentProgress(sid, name, teacher) {
       } catch { toast('مقدرتش أفتح المحادثة، جرّب تاني'); }
     };
     box.querySelector('#sback').onclick = teacherHome; box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
-  loadRecitations(sid, name, teacher);
+  loadRecitations(sid, name, teacher); loadRevision(sid);
   box.querySelectorAll('.qs').forEach((r) => (r.onclick = () => surahSheet(sid, name, teacher, +r.dataset.n)));
+}
+async function loadRevision(sid) {
+  const el = document.getElementById('rqlist'); if (!el) return;
+  const { data, error } = await sb.rpc('revision_due', { p_student: sid });
+  if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل المراجعة</div>'; return; }
+  if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">مفيش مراجعة مستحقة ✅</div>'; return; }
+  const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
+  el.innerHTML = data.slice(0, 30).map((r) => `<div style="background:#fff3f3;border-radius:12px;padding:8px 12px;margin-bottom:6px;display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)} <small style="font-weight:400">(${arN(r.cnt)} آية)</small></b><span style="color:var(--mu);font-size:13px">من ${arN(Math.max(1, Math.round((Date.now() - new Date(r.since + 'T12:00:00')) / 86400000)))} يوم</span></div>`).join('') + (data.length > 30 ? '<div style="color:var(--mu);font-size:13px">وفيه غيرهم…</div>' : '') + '<div style="color:var(--mu);font-size:12px">لما تسمّع المدى ده في جلسة تسميع بيتشال من الطابور.</div>';
 }
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
 async function loadRecitations(sid, name, teacher, lim = 15) {
