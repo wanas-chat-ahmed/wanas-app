@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '24';
+const BUILD = '25';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -292,7 +292,7 @@ function subjectBar() {
   const ob = el.querySelector('#qopen'); if (ob) ob.onclick = openMyPlatform;
 }
 function curSub() { return (S.subs || []).find((x) => x.id === S.sub); }
-const QT = [['tilawa', 'تلاوة'], ['story', 'قصص'], ['seerah', 'سيرة']];
+const QT = [['tilawa', 'تلاوة'], ['story', 'قصص'], ['seerah', 'سيرة'], ['original', 'النص الأصلي']];
 function openSubject() {
   const sub = curSub(), tb = document.getElementById('qtabs'), box = document.getElementById('qbody'); if (!box) return;
   if (!sub || sub.kind !== 'quran') { if (tb) tb.innerHTML = ''; return openSubject0(); }
@@ -305,13 +305,15 @@ function openSubject() {
 async function chapterList(sub, kind) {
   const box = document.getElementById('qbody'); if (!box) return;
   box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
-  const { data, error } = await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', sub.id).eq('kind', kind).order('level').order('position').order('id');
+  const { data, error } = await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', sub.id).eq('kind', kind).limit(1000).order('level').order('position').order('id');
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
   if (!data.length) { box.innerHTML = '<div class="empty">لسه مفيش محتوى هنا</div>'; return; }
-  let last = null, h = '';
-  for (const l of data) { if (l.level !== last) { last = l.level; h += `<div style="padding:12px 16px 4px;color:var(--mu);font-size:13px;font-weight:700">${esc(l.level || '')}</div>`; } h += `<div class="row chp" data-id="${l.id}"><div class="mid"><div class="nm" dir="auto">${esc(l.title)}</div></div></div>`; }
-  box.innerHTML = `<div class="list">${h}</div>`;
-  box.querySelectorAll('.chp').forEach((r) => (r.onclick = () => lessonSheet(data.find((x) => x.id == r.dataset.id))));
+  data.forEach((x) => (x.kind = kind));
+  const groups = []; for (const l of data) { let g = groups[groups.length - 1]; if (!g || g.name !== l.level) groups.push(g = { name: l.level || '', rows: [] }); g.rows.push(l); }
+  const wc = (g) => arN(g.rows.reduce((n, x) => n + (x.body || '').split(/\s+/).length, 0));
+  box.innerHTML = `<div class="list">${groups.map((g, gi) => `<div class="qgrp"><button class="qgh" data-g="${gi}"><span>${esc(g.name)}</span><small>${arN(g.rows.length)} · ${wc(g)} كلمة</small></button><div class="qgb" id="g${gi}" hidden>${g.rows.map((l, ri) => `<div class="row chp" data-g="${gi}" data-r="${ri}"><div class="mid"><div class="nm" dir="auto">${esc(l.title)}</div></div></div>`).join('')}</div></div>`).join('')}</div>`;
+  box.querySelectorAll('.qgh').forEach((b) => (b.onclick = () => { const e = box.querySelector('#g' + b.dataset.g); e.hidden = !e.hidden; b.classList.toggle('open', !e.hidden); }));
+  box.querySelectorAll('.chp').forEach((r) => (r.onclick = () => { const g = groups[+r.dataset.g]; lessonSheet(g.rows[+r.dataset.r], null, { list: g.rows, i: +r.dataset.r }); }));
 }
 function openSubject0() {
   const sub = curSub(), box = document.getElementById('qbody'); if (!box) return;
@@ -350,6 +352,7 @@ async function genericHome(sub, tab = 'students') {
   const rdr = sub.kind === 'reader';
   const tabs = `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الطلاب', 'students', tab === 'students')}${sjTab(rdr ? 'الفصول' : 'المنهج', 'lesson', tab === 'lesson')}${rdr ? '' : sjTab('القواعد', 'grammar', tab === 'grammar')}</div>`;
   const bind = () => box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => genericHome(sub, b.dataset.t)));
+  if (tab === 'grammar' && isEng(sub)) { box.innerHTML = `${tabs}<div style="padding:14px">${grammarCard()}</div>`; bind(); bindGrammar(box); return; }
   if (tab !== 'students') {
     const { data, error } = await sb.from('sj_lessons').select('id,kind,level,title,body,position').eq('subject_id', sub.id).eq('kind', tab).order('level').order('position').order('id');
     if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل المنهج</div>'; return; }
@@ -382,11 +385,245 @@ async function genericHome(sub, tab = 'students') {
   box.querySelectorAll('.row').forEach((r) => (r.onclick = () => sjStudent(sub, r.dataset.id, r.dataset.n, true)));
   box.querySelector('#qadd').onclick = addStudentSheet;
 }
-function lessonSheet(l, st) {
-  const body = esc(l.body || '').replace(/https?:\/\/[^\s<)]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener" style="color:var(--vt);word-break:break-all">${u}</a>`).split('\n').map((x) => `<div dir="auto" style="min-height:1em">${x}</div>`).join('');
-  const s = sheet(`<h3>${l.level ? `<small style="color:var(--mu);font-weight:400">${esc(l.level)}</small><br>` : ''}${esc(l.title)}</h3><div style="line-height:1.9;font-size:16px;max-height:62vh;overflow:auto">${body}</div>${st ? `<button class="btn" id="lst" style="margin-top:12px">غيّر الحالة (دلوقتي: ${st.label})</button>` : ''}<button class="btn sec" id="cl">قفل</button>`);
-  s.querySelector('#cl').onclick = () => s.remove();
-  const b = s.querySelector('#lst'); if (b) b.onclick = async () => { s.remove(); await st.next(); };
+// Fixed grammar course (not editable). Each lesson: explanation cards + short quiz.
+const GR = [
+  { id: 'a1-articles', lv: 'A1', ic: '🍎', t: 'a / an / the',
+    cards: [
+      { h: 'a و an', p: 'نستخدم a أو an قبل اسم واحد، أول مرة نتكلم عنه.\n• a قبل حرف ساكن: a book, a car\n• an قبل صوت متحرك (a e i o u): an apple, an egg', ex: [['I have a pen.', 'عندي قلم.'], ['She eats an apple.', 'هي بتاكل تفاحة.']] },
+      { h: 'the', p: 'نستخدم the لما الشخص اللي بنكلمه يعرف الحاجة دي. أو لما نكررها.', ex: [['I have a cat. The cat is white.', 'عندي قطة. القطة بيضا.'], ['Open the door.', 'افتح الباب.']] },
+    ],
+    q: [
+      { q: 'I have ___ orange.', o: ['a', 'an', 'the'], a: 1, w: 'orange بتبدأ بصوت متحرك، يبقى an.' },
+      { q: 'He has ___ dog.', o: ['a', 'an', 'the'], a: 0, w: 'dog بتبدأ بحرف ساكن، يبقى a.' },
+      { q: 'I saw a boy. ___ boy was tall.', o: ['A', 'An', 'The'], a: 2, w: 'الولد اتذكر قبل كده، يبقى The.' },
+      { q: 'She is ___ doctor.', o: ['a', 'an', 'the'], a: 0, w: 'doctor حرف ساكن في الأول، يبقى a.' },
+    ] },
+  { id: 'a1-plural', lv: 'A1', ic: '📚', t: 'الجمع (Plural)',
+    cards: [
+      { h: 'القاعدة العامة', p: 'نضيف s في آخر الاسم:\nbook → books\ncar → cars', ex: [['one cat, two cats', 'قطة، اتنين قطط']] },
+      { h: 'es و ies', p: 'بعد s, x, ch, sh نضيف es: bus → buses, box → boxes.\nلو الاسم آخره y بعد حرف ساكن: نشيل y ونحط ies: city → cities.', ex: [['one watch, two watches', 'ساعة، ساعتين'], ['one baby, two babies', 'طفل، طفلين']] },
+      { h: 'جموع شاذة', p: 'بتتغير كلها: man → men, woman → women, child → children, foot → feet, person → people.', ex: [['Two children are here.', 'طفلين هنا.']] },
+    ],
+    q: [
+      { q: 'one box → two ___', o: ['boxs', 'boxes', 'boxies'], a: 1, w: 'بعد x بنحط es.' },
+      { q: 'one city → two ___', o: ['citys', 'cities', 'cityes'], a: 1, w: 'y بعد حرف ساكن تبقى ies.' },
+      { q: 'one child → two ___', o: ['childs', 'childes', 'children'], a: 2, w: 'children جمع شاذ.' },
+      { q: 'one day → two ___', o: ['days', 'daies', 'dayes'], a: 0, w: 'y بعد حرف متحرك (a) بنحط s بس.' },
+    ] },
+  { id: 'a1-tobe', lv: 'A1', ic: '🙂', t: 'am / is / are',
+    cards: [
+      { h: 'فعل الكينونة', p: 'I → am\nhe / she / it → is\nyou / we / they → are', ex: [['I am a student.', 'أنا طالب.'], ['She is happy.', 'هي سعيدة.'], ['They are friends.', 'هم أصحاب.']] },
+      { h: 'النفي والسؤال', p: 'النفي: نضيف not بعد الفعل: He is not tired.\nالسؤال: نقدم الفعل: Is he tired? Are you ready?', ex: [['Are you a teacher?', 'هل أنت مدرس؟'], ['I am not hungry.', 'أنا مش جعان.']] },
+    ],
+    q: [
+      { q: 'I ___ ten years old.', o: ['am', 'is', 'are'], a: 0, w: 'مع I نستخدم am.' },
+      { q: 'She ___ my sister.', o: ['am', 'is', 'are'], a: 1, w: 'مع she نستخدم is.' },
+      { q: 'We ___ at school.', o: ['is', 'am', 'are'], a: 2, w: 'مع we نستخدم are.' },
+      { q: '___ you ready?', o: ['Is', 'Are', 'Am'], a: 1, w: 'السؤال مع you يبدأ بـ Are.' },
+    ] },
+  { id: 'a1-pronouns', lv: 'A1', ic: '👤', t: 'الضمائر (I, he, my...)',
+    cards: [
+      { h: 'ضمائر الفاعل وصفات الملكية', p: 'I → my (بتاعي)\nyou → your (بتاعك)\nhe → his (بتاعه)\nshe → her (بتاعها)\nwe → our (بتاعنا)\nthey → their (بتاعهم)', ex: [['I love my family.', 'بحب أسرتي.'], ['She likes her bag.', 'هي بتحب شنطتها.']] },
+      { h: 'ضمائر المفعول', p: 'me, you, him, her, it, us, them: بنحطها بعد الفعل.', ex: [['Ali helps me.', 'علي بيساعدني.'], ['I know them.', 'أنا أعرفهم.']] },
+    ],
+    q: [
+      { q: 'He loves ___ mother.', o: ['he', 'his', 'him'], a: 1, w: 'ملكية: his.' },
+      { q: 'They like ___ teacher.', o: ['their', 'them', 'they'], a: 0, w: 'ملكية: their.' },
+      { q: 'Please help ___.', o: ['I', 'my', 'me'], a: 2, w: 'مفعول: me.' },
+      { q: 'This is Sara. ___ bag is blue.', o: ['She', 'Her', 'Him'], a: 1, w: 'الشنطة بتاعتها: Her.' },
+    ] },
+  { id: 'a1-questions', lv: 'A1', ic: '❓', t: 'كلمات السؤال',
+    cards: [
+      { h: 'أهم كلمات السؤال', p: 'What = إيه\nWhere = فين\nWhen = إمتى\nWho = مين\nWhy = ليه\nHow = إزاي', ex: [['What is your name?', 'اسمك إيه؟'], ['Where do you live?', 'بتسكن فين؟'], ['Why are you late?', 'إنت اتأخرت ليه؟']] },
+    ],
+    q: [
+      { q: '___ is your birthday? (إمتى)', o: ['Where', 'When', 'Who'], a: 1, w: 'when = إمتى.' },
+      { q: '___ is your teacher? (مين)', o: ['Who', 'What', 'Why'], a: 0, w: 'who = مين.' },
+      { q: '___ do you live? (فين)', o: ['How', 'Where', 'When'], a: 1, w: 'where = فين.' },
+    ] },
+  { id: 'a2-present', lv: 'A2', ic: '⏰', t: 'المضارع البسيط والمستمر',
+    cards: [
+      { h: 'المضارع البسيط', p: 'للعادات والحقائق. مع he / she / it نضيف s للفعل.\nكلمات: always, usually, every day', ex: [['I drink tea every day.', 'بشرب شاي كل يوم.'], ['She works in a bank.', 'هي بتشتغل في بنك.']] },
+      { h: 'المضارع المستمر', p: 'لحاجة بتحصل دلوقتي: am / is / are + فعل + ing.\nكلمات: now, at the moment', ex: [['I am drinking tea now.', 'أنا بشرب شاي دلوقتي.'], ['They are playing.', 'هم بيلعبوا.']] },
+    ],
+    q: [
+      { q: 'She ___ to school every day.', o: ['go', 'goes', 'is going'], a: 1, w: 'عادة يومية مع she: goes.' },
+      { q: 'Look! It ___ now.', o: ['rains', 'is raining', 'rain'], a: 1, w: 'بيحصل دلوقتي: is raining.' },
+      { q: 'I ___ football on Fridays.', o: ['play', 'am play', 'plays'], a: 0, w: 'عادة مع I: play.' },
+      { q: 'They ___ TV at the moment.', o: ['watch', 'are watching', 'watches'], a: 1, w: 'at the moment = دلوقتي.' },
+    ] },
+  { id: 'a2-count', lv: 'A2', ic: '🥤', t: 'some / any / much / many',
+    cards: [
+      { h: 'some و any', p: 'some في الجملة المثبتة.\nany في النفي والسؤال.', ex: [['I have some water.', 'عندي شوية مية.'], ['I don\'t have any money.', 'معنديش فلوس.'], ['Do you have any questions?', 'عندك أسئلة؟']] },
+      { h: 'much و many', p: 'many مع الأشياء اللي بنعدّها: many books.\nmuch مع الأشياء اللي مش بنعدّها: much water.\na lot of تنفع مع الاتنين.', ex: [['How many apples?', 'كام تفاحة؟'], ['How much rice?', 'كام رز؟']] },
+    ],
+    q: [
+      { q: 'I need ___ help.', o: ['some', 'many', 'a'], a: 0, w: 'جملة مثبتة: some.' },
+      { q: 'She doesn\'t have ___ friends here.', o: ['some', 'any', 'much'], a: 1, w: 'نفي: any.' },
+      { q: 'How ___ water do you drink?', o: ['many', 'much', 'a'], a: 1, w: 'water مش بنعدّه: much.' },
+      { q: 'How ___ students are in class?', o: ['much', 'many', 'any'], a: 1, w: 'students بنعدّهم: many.' },
+    ] },
+  { id: 'a2-prep', lv: 'A2', ic: '📍', t: 'in / on / at',
+    cards: [
+      { h: 'الوقت', p: 'at + الساعة: at 5 o\'clock\non + اليوم والتاريخ: on Friday\nin + الشهر والسنة والفصل: in May, in 2024, in summer', ex: [['See you at 8.', 'نتقابل الساعة ٨.'], ['I was born in May.', 'أنا اتولدت في مايو.']] },
+      { h: 'المكان', p: 'at = نقطة: at the door\nin = جوّه: in the room, in Cairo\non = فوق سطح: on the table', ex: [['The book is on the table.', 'الكتاب على الترابيزة.'], ['He lives in Egypt.', 'هو عايش في مصر.']] },
+    ],
+    q: [
+      { q: 'The class starts ___ 9 o\'clock.', o: ['in', 'on', 'at'], a: 2, w: 'ساعة: at.' },
+      { q: 'We go to school ___ Sunday.', o: ['on', 'in', 'at'], a: 0, w: 'يوم: on.' },
+      { q: 'My birthday is ___ July.', o: ['on', 'in', 'at'], a: 1, w: 'شهر: in.' },
+      { q: 'The keys are ___ the table.', o: ['in', 'at', 'on'], a: 2, w: 'فوق سطح: on.' },
+    ] },
+  { id: 'a2-modals', lv: 'A2', ic: '🚦', t: 'must / should / can',
+    cards: [
+      { h: 'الأفعال المساعدة', p: 'can = أقدر\nmust = لازم (قوي)\nshould = المفروض (نصيحة)\nmustn\'t = ممنوع\nبعدها الفعل من غير to.', ex: [['I can swim.', 'أنا أقدر أعوم.'], ['You must stop at red.', 'لازم تقف عند الأحمر.'], ['You should sleep early.', 'المفروض تنام بدري.']] },
+    ],
+    q: [
+      { q: 'You ___ do your homework. (نصيحة)', o: ['should', 'must to', 'can to'], a: 0, w: 'نصيحة: should، من غير to.' },
+      { q: 'I ___ swim very well.', o: ['can', 'cans', 'am can'], a: 0, w: 'can ثابتة بدون s.' },
+      { q: 'You ___ cross the road when it is red. (ممنوع)', o: ['must', 'mustn\'t', 'should'], a: 1, w: 'ممنوع: mustn\'t.' },
+    ] },
+  { id: 'b1-perfect', lv: 'B1', ic: '🕘', t: 'Present perfect و Past simple',
+    cards: [
+      { h: 'Past simple', p: 'لحاجة حصلت ووقتها معروف وانتهى.\nكلمات: yesterday, last year, in 2020', ex: [['I visited Alexandria last year.', 'زرت إسكندرية السنة اللي فاتت.']] },
+      { h: 'Present perfect', p: 'have / has + التصريف الثالث.\nلحاجة حصلت من غير وقت معروف، أو لسه مستمرة.\nfor = مدة (for 3 years)\nsince = بداية (since 2018)', ex: [['I have visited Alexandria.', 'أنا زرت إسكندرية قبل كده.'], ['She has lived here since 2018.', 'هي عايشة هنا من ٢٠١٨.']] },
+    ],
+    q: [
+      { q: 'I ___ him yesterday.', o: ['saw', 'have seen', 'see'], a: 0, w: 'yesterday = ماضي بسيط.' },
+      { q: 'We ___ here for five years.', o: ['lived', 'have lived', 'live'], a: 1, w: 'for + مدة = present perfect.' },
+      { q: 'Have you ___ to Paris?', o: ['go', 'went', 'been'], a: 2, w: 'التصريف الثالث: been.' },
+      { q: 'She has worked here ___ 2019.', o: ['for', 'since', 'in'], a: 1, w: 'since = من بداية معينة.' },
+    ] },
+  { id: 'b1-passive', lv: 'B1', ic: '🔁', t: 'المبني للمجهول (Passive)',
+    cards: [
+      { h: 'الشكل', p: 'to be + التصريف الثالث للفعل.\nنستخدمه لما الفاعل مش مهم أو مش معروف.', ex: [['English is spoken worldwide.', 'الإنجليزية بتتكلم في العالم كله.'], ['The window was broken.', 'الشباك اتكسر.']] },
+      { h: 'من الـ active للـ passive', p: 'Active: Ali wrote the report.\nPassive: The report was written by Ali.', ex: [['They built this house in 1990.', 'The house was built in 1990.']] },
+    ],
+    q: [
+      { q: 'The cake ___ by my mother.', o: ['made', 'was made', 'is make'], a: 1, w: 'was + التصريف الثالث.' },
+      { q: 'Rice ___ in Egypt.', o: ['grows', 'is grown', 'grown'], a: 1, w: 'is + التصريف الثالث.' },
+      { q: 'The work has ___ finished.', o: ['be', 'being', 'been'], a: 2, w: 'has been finished.' },
+    ] },
+  { id: 'b1-relative', lv: 'B1', ic: '🔗', t: 'who / which / that / where',
+    cards: [
+      { h: 'ربط الجمل', p: 'who للأشخاص\nwhich للأشياء\nthat للاتنين\nwhere للأماكن\nwhose للملكية', ex: [['The man who lives next door is a doctor.', 'الراجل اللي ساكن جنبنا دكتور.'], ['This is the school where I studied.', 'ده المدرسة اللي اتعلمت فيها.']] },
+    ],
+    q: [
+      { q: 'The girl ___ won is my cousin.', o: ['who', 'which', 'where'], a: 0, w: 'شخص: who.' },
+      { q: 'The book ___ I read was great.', o: ['who', 'which', 'where'], a: 1, w: 'شيء: which.' },
+      { q: 'This is the park ___ we play.', o: ['who', 'which', 'where'], a: 2, w: 'مكان: where.' },
+    ] },
+  { id: 'b1-reported', lv: 'B1', ic: '💬', t: 'الكلام المنقول (Reported speech)',
+    cards: [
+      { h: 'نرجع بالفعل خطوة', p: 'لما نحكي كلام حد، الزمن بيرجع خطوة ورا:\nam / is → was\nwill → would\nhave → had', ex: [['"I am tired." → He said he was tired.', ''], ['"I will come." → She said she would come.', '']] },
+    ],
+    q: [
+      { q: '"I am busy." → He said he ___ busy.', o: ['is', 'was', 'be'], a: 1, w: 'am/is ترجع was.' },
+      { q: '"I will help." → She said she ___ help.', o: ['will', 'would', 'did'], a: 1, w: 'will ترجع would.' },
+      { q: '"I have finished." → He said he ___ finished.', o: ['has', 'have', 'had'], a: 2, w: 'have ترجع had.' },
+    ] },
+  { id: 'b1-link', lv: 'B1', ic: '🧩', t: 'كلمات الربط',
+    cards: [
+      { h: 'إضافة وتناقض', p: 'إضافة: and, also, moreover\nتناقض: but, however, although', ex: [['Although it was late, we kept studying.', 'مع إن الوقت اتأخر، كملنا مذاكرة.']] },
+      { h: 'سبب ونتيجة', p: 'because = لأن\nso = عشان كده\ntherefore = لذلك', ex: [['I was tired, so I slept.', 'كنت تعبان، عشان كده نمت.'], ['I stayed home because it rained.', 'قعدت في البيت لأن المطر نزل.']] },
+    ],
+    q: [
+      { q: 'I was hungry, ___ I ate.', o: ['because', 'so', 'but'], a: 1, w: 'نتيجة: so.' },
+      { q: 'He stayed home ___ he was sick.', o: ['so', 'because', 'however'], a: 1, w: 'سبب: because.' },
+      { q: '___ it was cold, we went out.', o: ['Because', 'So', 'Although'], a: 2, w: 'تناقض: Although.' },
+    ] },
+];
+
+const isEng = (sub) => sub && sub.kind === 'generic' && /انجليزي|إنجليزي|english/i.test(sub.name || '');
+const gpKey = () => 'gp_' + ((S.me && S.me.id) || 'x');
+const gpGet = () => { try { return JSON.parse(localStorage.getItem(gpKey()) || '{}'); } catch { return {}; } };
+function grammarCard() { return `<div class="gcard" id="gopen"><div style="font-size:34px">📘</div><div style="flex:1"><div style="font-weight:800;font-size:17px">قواعد الإنجليزي</div><div style="font-size:13px;opacity:.9">${arN(GR.length)} درس قصير · قاعدة وتمارين</div></div><div style="font-size:22px">‹</div></div>`; }
+function bindGrammar(root) { const b = root.querySelector('#gopen'); if (b) b.onclick = openGrammar; }
+function openGrammar() {
+  const s = sheet('<div></div>'); s.classList.add('full');
+  const draw = () => {
+    const gp = gpGet(), done = GR.filter((x) => gp[x.id]).length;
+    let last = '', h = '';
+    GR.forEach((x, i) => { if (x.lv !== last) { last = x.lv; h += `<div class="glv">المستوى ${x.lv}</div>`; } const p = gp[x.id]; h += `<div class="row grow" data-i="${i}"><div class="gic">${x.ic}</div><div class="mid"><div class="nm" dir="auto">${esc(x.t)}</div><div class="ls">${p ? `خلّصته · ${arN(p.best)}/${arN(p.total)}` : arN(x.q.length) + ' تمارين'}</div></div><div style="font-size:20px">${p && p.best === p.total ? '⭐' : p ? '✅' : '▶'}</div></div>`; });
+    s.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl">✕</button><div style="flex:1"></div></div><div class="rdt"><h3>قواعد الإنجليزي</h3></div><div class="gbar"><i style="width:${Math.round(done / GR.length * 100)}%"></i></div><div style="color:var(--mu);font-size:13px;margin:4px 2px 6px">${arN(done)} من ${arN(GR.length)} خلصت</div><div class="rdbody">${h}</div>`;
+    s.querySelector('#cl').onclick = () => s.remove();
+    s.querySelectorAll('.grow').forEach((r) => (r.onclick = () => grammarLesson(+r.dataset.i, draw)));
+  };
+  draw();
+}
+function grammarLesson(i, onDone) {
+  const L = GR[i], s = sheet('<div></div>'); s.classList.add('full');
+  const steps = []; { const cs = L.cards, qs = L.q, n = Math.max(cs.length, qs.length); for (let j = 0; j < n; j++) { if (cs[j]) steps.push({ t: 'c', c: cs[j] }); const per = j === cs.length - 1 ? qs.length - j : 1; for (let m = 0; m < per && qs[j + m]; m++) steps.push({ t: 'q', q: qs[j + m] }); if (j === cs.length - 1) break; } steps.push({ t: 'end' }); }
+  let k = 0, score = 0;
+  const draw = () => {
+    const st = steps[k], pct = Math.round(k / (steps.length - 1) * 100);
+    let body = '', foot = '';
+    if (st.t === 'c') {
+      body = `<div class="gh">${esc(st.c.h)}</div><div class="gp" dir="auto">${esc(st.c.p).replace(/\n/g, '<br>')}</div>${st.c.ex.map(([e, a]) => `<div class="gex"><div dir="ltr" style="font-weight:700">${esc(e)}</div>${a ? `<div style="color:var(--mu);font-size:15px">${esc(a)}</div>` : ''}</div>`).join('')}`;
+      foot = '<button class="btn" id="nx">كمّل</button>';
+    } else if (st.t === 'q') {
+      body = `<div class="gq" dir="ltr">${esc(st.q.q)}</div>${st.q.o.map((o, j) => `<button class="gopt" data-j="${j}" dir="ltr">${esc(o)}</button>`).join('')}<div id="gfb"></div>`;
+    } else {
+      const all = score === L.q.length; body = `<div style="text-align:center;padding-top:30px"><div style="font-size:64px">${all ? '🎉' : '👍'}</div><div class="gh" style="margin-top:8px">${all ? 'ممتاز!' : 'برافو!'}</div><div style="font-size:22px;margin:6px 0">${arN(score)} من ${arN(L.q.length)}</div><div style="color:var(--mu)">${all ? 'جاوبت كل الأسئلة صح' : 'ممكن تعيد الدرس عشان تثبّت القاعدة'}</div></div>`;
+      foot = `${i < GR.length - 1 ? '<button class="btn" id="nl">الدرس اللي بعده</button>' : ''}<button class="btn sec" id="rt">إعادة</button><button class="btn sec" id="ex">خروج</button>`;
+      const gp = gpGet(), p = gp[L.id]; if (!p || score >= p.best) { gp[L.id] = { best: score, total: L.q.length }; localStorage.setItem(gpKey(), JSON.stringify(gp)); }
+    }
+    s.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl">✕</button><div class="gbar" style="flex:1;margin:0 10px"><i style="width:${pct}%"></i></div></div><div class="rdbody" style="font-size:19px">${body}</div><div class="rdfoot" id="gft">${foot}</div>`;
+    s.querySelector('#cl').onclick = () => { s.remove(); onDone && onDone(); };
+    const nx = s.querySelector('#nx'); if (nx) nx.onclick = () => { k++; draw(); };
+    s.querySelectorAll('.gopt').forEach((b) => (b.onclick = () => {
+      const q = st.q, j = +b.dataset.j, ok = j === q.a; if (ok) score++;
+      s.querySelectorAll('.gopt').forEach((x) => { x.disabled = true; if (+x.dataset.j === q.a) x.classList.add('ok'); });
+      if (!ok) b.classList.add('bad');
+      s.querySelector('#gfb').innerHTML = `<div class="gfb ${ok ? 'ok' : 'bad'}">${ok ? '✓ صح!' : '✗ غلط'}<div style="font-weight:400;margin-top:2px">${esc(q.w)}</div></div>`;
+      s.querySelector('#gft').innerHTML = '<button class="btn" id="nx2">كمّل</button>'; s.querySelector('#nx2').onclick = () => { k++; draw(); };
+    }));
+    const nl = s.querySelector('#nl'); if (nl) nl.onclick = () => { s.remove(); onDone && onDone(); grammarLesson(i + 1, onDone); };
+    const rt = s.querySelector('#rt'); if (rt) rt.onclick = () => { k = 0; score = 0; draw(); };
+    const ex = s.querySelector('#ex'); if (ex) ex.onclick = () => { s.remove(); onDone && onDone(); };
+  };
+  draw();
+}
+function lessonSheet(l, st, nav) {
+  const fs = () => Math.min(36, Math.max(15, +localStorage.getItem('wfs') || 21));
+  const s = sheet('<div id="rd"></div>'); s.classList.add('full');
+  let playing = false, au = null, mode = '';
+  const canVoice = () => (l.kind === 'story' || l.kind === 'seerah') && l.position != null;
+  const plain = () => (l.title + '. ' + (l.body || '').split('\n').filter((x) => !x.startsWith('المصدر')).join('\n'));
+  const stop = () => { playing = false; try { if (au) { au.pause(); au.removeAttribute('src'); au.load(); } } catch {} try { speechSynthesis.cancel(); } catch {} };
+  const rm = s.remove.bind(s); s.remove = () => { stop(); rm(); };
+  const btn = () => { const b = s.querySelector('#pl'); if (b) b.textContent = playing ? '⏸ إيقاف' : '🔊 اسمع القصة'; };
+  const after = () => { if (playing && nav && nav.i < nav.list.length - 1) { nav.i++; l = nav.list[nav.i]; draw(); play(); } else { playing = false; btn(); } };
+  const speak = () => {
+    try {
+      const u = new SpeechSynthesisUtterance(plain()); u.lang = 'ar-SA'; u.rate = 0.85;
+      const v = speechSynthesis.getVoices().find((x) => /^ar/i.test(x.lang)); if (v) u.voice = v;
+      u.onend = after; u.onerror = () => { playing = false; btn(); toast('الصوت مش شغال على الجهاز ده'); };
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch { playing = false; btn(); toast('الصوت مش متاح على الجهاز ده'); }
+  };
+  const play = () => {
+    playing = true; btn(); if (!au) au = new Audio();
+    au.onended = after; au.onerror = () => { if (playing) speak(); };
+    au.src = `${SB_URL}/storage/v1/object/public/story-audio/${l.kind}${l.position}.mp3`;
+    au.play().catch(() => { if (playing) speak(); });
+  };
+  const draw = () => {
+    const body = esc(l.body || '').replace(/https?:\/\/[^\s<)]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener" style="color:var(--vt);word-break:break-all">${u}</a>`).split('\n').map((x) => `<div dir="auto" style="min-height:1em;margin-bottom:.55em">${x}</div>`).join('');
+    const n = nav && nav.list.length > 1;
+    s.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl" aria-label="قفل">✕</button>${canVoice() ? '<button class="rdb" id="pl" style="background:var(--v);color:#fff">🔊 اسمع القصة</button>' : ''}<div style="flex:1"></div><button class="rdb" id="fm">أ−</button><button class="rdb" id="fp">أ+</button></div>
+    <div class="rdt">${l.level ? `<small>${esc(l.level)}</small>` : ''}<h3>${esc(l.title)}</h3></div>
+    <div class="rdbody" id="rdb" style="font-size:${fs()}px">${body}</div>
+    <div class="rdfoot">${n ? `<button class="btn sec" id="pv" ${nav.i <= 0 ? 'disabled' : ''}>السابق</button><button class="btn" id="nx" ${nav.i >= nav.list.length - 1 ? 'disabled' : ''}>التالي</button>` : ''}${st ? `<button class="btn" id="lst">غيّر الحالة (دلوقتي: ${st.label})</button>` : ''}</div>`;
+    s.querySelector('#cl').onclick = () => s.remove();
+    const z = (d) => { localStorage.setItem('wfs', Math.min(36, Math.max(15, fs() + d))); s.querySelector('#rdb').style.fontSize = fs() + 'px'; };
+    s.querySelector('#fm').onclick = () => z(-2); s.querySelector('#fp').onclick = () => z(2);
+    const go = (d) => { const was = playing; stop(); nav.i += d; l = nav.list[nav.i]; draw(); if (was) play(); };
+    const pv = s.querySelector('#pv'), nx = s.querySelector('#nx'); if (pv) pv.onclick = () => go(-1); if (nx) nx.onclick = () => go(1);
+    const pl = s.querySelector('#pl'); if (pl) { btn(); pl.onclick = () => { if (playing) { stop(); btn(); } else play(); }; }
+    const b = s.querySelector('#lst'); if (b) b.onclick = async () => { s.remove(); await st.next(); };
+  };
+  draw();
 }
 async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
   const rd = sub.kind === 'reader'; if (rd) tab = 'lessons';
@@ -406,7 +643,8 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
   let body = '', fab = '';
   if (tab === 'lessons') {
     const kinds = [['lesson', 'الدروس'], ['grammar', 'القواعد']];
-    body = kinds.map(([k, t]) => { const a = ls.data.filter((l) => l.kind === k); if (!a.length) return ''; return (rd ? '' : `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${t}</div>`) + a.map((l) => { const s = st[l.id] || 'todo'; return `<div class="row sjls" data-id="${l.id}" data-s="${s}"><div class="mid"><div class="nm">${l.level ? `<small style="color:var(--mu)">${esc(l.level)} · </small>` : ''}${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div>${rd && !teacher ? '' : sjBadge(SJS, s)}</div>`; }).join(''); }).join('') || '<div class="empty">المدرّس لسه مضافش دروس</div>';
+    const eng = isEng(sub);
+    body = (eng ? grammarCard() : '') + kinds.map(([k, t]) => { if (eng && k === 'grammar') return ''; const a = ls.data.filter((l) => l.kind === k); if (!a.length) return ''; return (rd ? '' : `<div style="margin:12px 0 4px;font-weight:700;color:var(--vt)">${t}</div>`) + a.map((l) => { const s = st[l.id] || 'todo'; return `<div class="row sjls" data-id="${l.id}" data-s="${s}"><div class="mid"><div class="nm">${l.level ? `<small style="color:var(--mu)">${esc(l.level)} · </small>` : ''}${esc(l.title)}</div>${l.body ? `<div class="ls">${esc(l.body.slice(0, 80))}</div>` : ''}</div>${rd && !teacher ? '' : sjBadge(SJS, s)}</div>`; }).join(''); }).join('') || '<div class="empty">المدرّس لسه مضافش دروس</div>';
   } else if (tab === 'vocab') {
     body = vc.data.map((v) => `<div class="row sjv" data-id="${v.id}" data-s="${v.status}"><div class="mid"><div class="nm" dir="auto">${esc(v.word)}${v.meaning ? ` <small style="color:var(--mu)">— ${esc(v.meaning)}</small>` : ''}</div>${v.example ? `<div class="ls" dir="auto">${esc(v.example)}</div>` : ''}</div>${sjBadge(SJV, v.status)}${teacher ? `<button class="ib sjvd" data-id="${v.id}" style="margin-inline-start:6px;color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش كلمات</div>';
     if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
@@ -415,6 +653,7 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
     if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
   }
   box.innerHTML = `${back}${stats}${tabs}<div style="padding:4px 14px 80px">${body}</div>${fab}`;
+  bindGrammar(box);
   const re = (t) => sjStudent(sub, sid, name, teacher, t || tab);
   box.querySelectorAll('.sjt').forEach((b) => (b.onclick = () => re(b.dataset.t)));
   const bk = box.querySelector('#sjb'); if (bk) bk.onclick = () => genericHome(sub);
