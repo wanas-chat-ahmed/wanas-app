@@ -122,3 +122,4 @@ input,textarea{font:inherit;color:inherit}
 .bc i{display:block;width:100%;background:var(--a);border-radius:3px 3px 0 0;min-height:2px}
 .bc small{font-size:9px;color:var(--mu)}
 .cap{height:10px;border-radius:5px;background:var(--vl);overflow:hidden}.cap i{display:block;height:100%;background:var(--v)}
+.upd{position:fixed;top:0;left:0;right:0;z-index:99;background:var(--a);color:#1f1537;text-align:center;padding:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
