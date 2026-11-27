@@ -83,3 +83,32 @@ input,textarea{font:inherit;color:inherit}
 .about span{font-size:12px;color:var(--mu)}
 .about p{margin:4px 0 0;white-space:pre-wrap;word-break:break-word;line-height:1.6}
 .av.lg{width:96px;height:96px;font-size:40px}
+.msgs[data-wp=lilac]{background:linear-gradient(160deg,#f3ecff,#d9c8fb)}
+.msgs[data-wp=sun]{background:linear-gradient(160deg,#fff7e0,#ffd9a0)}
+.msgs[data-wp=mint]{background:linear-gradient(160deg,#e9fbf3,#b9ecd8)}
+.msgs[data-wp=sky]{background:linear-gradient(160deg,#eaf4ff,#b5d5fa)}
+.msgs[data-wp=rose]{background:linear-gradient(160deg,#fff0f5,#f9c6d8)}
+.msgs[data-wp=dots]{background:radial-gradient(#cdb8f5 1.6px,transparent 1.6px) 0 0/20px 20px,#f7f2ff}
+.msgs[data-wp=lines]{background:repeating-linear-gradient(135deg,#f7f1ff 0 14px,#ece2ff 14px 28px)}
+.msgs[data-wp=night]{background:linear-gradient(160deg,#241a45,#43297a)}
+.msgs[data-wp=night] .day{background:rgba(255,255,255,.9);color:var(--v2)}
+.msgs[data-wp] .b.them{box-shadow:0 1px 2px rgba(31,21,55,.12)}
+.msgs[data-wp] .day{background:rgba(255,255,255,.85)}
+.seg{display:flex;gap:8px;margin:8px 0}
+.seg label{flex:1;border:1.5px solid var(--ln);border-radius:12px;padding:8px;text-align:center;font-size:14px;cursor:pointer}
+.seg label:has(input:checked){border-color:var(--v);background:var(--vl);color:var(--v2);font-weight:700}
+.seg input{display:none}
+.wps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.wpsw{height:64px;border-radius:12px;border:1.5px solid var(--ln);cursor:pointer;display:flex;align-items:flex-end;justify-content:center;padding:0;overflow:hidden}
+.wpsw span{background:rgba(255,255,255,.85);color:var(--tx);font-size:12px;width:100%;padding:2px 0}
+.wpsw[data-wp=lilac]{background:linear-gradient(160deg,#f3ecff,#d9c8fb)}
+.wpsw[data-wp=sun]{background:linear-gradient(160deg,#fff7e0,#ffd9a0)}
+.wpsw[data-wp=mint]{background:linear-gradient(160deg,#e9fbf3,#b9ecd8)}
+.wpsw[data-wp=sky]{background:linear-gradient(160deg,#eaf4ff,#b5d5fa)}
+.wpsw[data-wp=rose]{background:linear-gradient(160deg,#fff0f5,#f9c6d8)}
+.wpsw[data-wp=dots]{background:radial-gradient(#cdb8f5 1.6px,transparent 1.6px) 0 0/12px 12px,#f7f2ff}
+.wpsw[data-wp=lines]{background:repeating-linear-gradient(135deg,#f7f1ff 0 8px,#ece2ff 8px 16px)}
+.wpsw[data-wp=night]{background:linear-gradient(160deg,#241a45,#43297a)}
+.msgs[data-wp] .b.me{box-shadow:0 0 0 1px rgba(255,255,255,.45),0 1px 3px rgba(31,21,55,.25)}
+.msgs[data-wp=night] .b.me{background:#7c3aed}
+.msgs[data-wp=night] .mt{opacity:.85}
