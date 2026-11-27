@@ -15,8 +15,8 @@ input,textarea{font:inherit;color:inherit}
 .card p.sub{margin:0 0 18px;color:var(--mu);font-size:14px}
 .field{display:block;text-align:right;margin:10px 0}
 .field span{display:block;font-size:13px;color:var(--mu);margin-bottom:4px}
-.field input{width:100%;padding:12px 14px;border:1.5px solid var(--ln);border-radius:12px;font-size:16px;background:#fcfbff}
-.field input:focus{outline:none;border-color:var(--v)}
+.field input,.field textarea{resize:none;width:100%;padding:12px 14px;border:1.5px solid var(--ln);border-radius:12px;font-size:16px;background:#fcfbff}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--v)}
 .btn{width:100%;padding:13px;border:0;border-radius:12px;background:var(--v);color:#fff;font-weight:700;font-size:16px;margin-top:8px}
 .btn:active{background:var(--v2)}
 .btn.sec{background:var(--vl);color:var(--v)}
@@ -79,3 +79,7 @@ input,textarea{font:inherit;color:inherit}
 .rec small{color:var(--mu);font-size:12px}
 .rdot{width:12px;height:12px;border-radius:50%;background:#e11d48;animation:rb 1s infinite}
 @keyframes rb{50%{opacity:.25}}
+.about{background:var(--vl);border-radius:14px;padding:10px 14px;margin:12px 0;text-align:right}
+.about span{font-size:12px;color:var(--mu)}
+.about p{margin:4px 0 0;white-space:pre-wrap;word-break:break-word;line-height:1.6}
+.av.lg{width:96px;height:96px;font-size:40px}
