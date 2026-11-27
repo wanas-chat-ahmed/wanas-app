@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '13';
+const BUILD = '14';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -366,6 +366,51 @@ function acctSheet(kind) {
   };
 }
 
+function hl(text, q) {
+  const t = String(text), i = t.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return esc(t.slice(0, 120));
+  const a = Math.max(0, i - 30), b = Math.min(t.length, i + q.length + 60);
+  return (a > 0 ? '…' : '') + esc(t.slice(a, i)) + '<mark>' + esc(t.slice(i, i + q.length)) + '</mark>' + esc(t.slice(i + q.length, b)) + (b < t.length ? '…' : '');
+}
+function searchSheet(id) {
+  const c = byId(id); if (!c) return;
+  const s = sheet(`<h3>بحث في المحادثة مع ${esc(c.name)}</h3>
+    <label class="field"><input id="sq" maxlength="60" placeholder="اكتب كلمة…" autocomplete="off"></label>
+    <div id="sr" style="max-height:55vh;overflow:auto"></div>`);
+  const sq = s.querySelector('#sq'), sr = s.querySelector('#sr'); let tm = null, seq = 0;
+  const me = S.me.id;
+  const pair = `and(from_id.eq.${me},to_id.eq.${id}),and(from_id.eq.${id},to_id.eq.${me})`;
+  sq.focus();
+  sq.oninput = () => { clearTimeout(tm); tm = setTimeout(run, 300); };
+  async function run() {
+    const q = sq.value.trim(), my = ++seq;
+    if (q.length < 2) { sr.innerHTML = q ? '<div class="empty">اكتب حرفين على الأقل</div>' : ''; return; }
+    sr.innerHTML = '<div class="empty">بدوّر…</div>';
+    const { data, error } = await sb.from('messages').select('id,from_id,body,created_at').or(pair).eq('kind', 'text')
+      .ilike('body', '%' + q.replace(/[\\%_]/g, '\\$&') + '%').order('id', { ascending: false }).limit(40);
+    if (my !== seq) return;
+    if (error) { sr.innerHTML = '<div class="empty">البحث مشتغلش، جرّب تاني</div>'; return; }
+    if (!data.length) { sr.innerHTML = '<div class="empty">مفيش نتايج</div>'; return; }
+    sr.innerHTML = data.map((m) => `<div class="row sres" data-id="${m.id}"><div class="mid"><div class="nm">${m.from_id === me ? 'انت' : esc(c.name)}</div><div class="ls" style="white-space:normal">${hl(m.body, q)}</div></div><div class="tm">${fmtDay(m.created_at)}<br>${fmtTime(m.created_at)}</div></div>`).join('');
+    sr.querySelectorAll('.sres').forEach((el) => (el.onclick = () => contextSheet(id, el.dataset.id, q)));
+  }
+}
+async function contextSheet(id, mid, q) {
+  const c = byId(id), me = S.me.id;
+  const pair = `and(from_id.eq.${me},to_id.eq.${id}),and(from_id.eq.${id},to_id.eq.${me})`;
+  const [a, b] = await Promise.all([
+    sb.from('messages').select('id,from_id,kind,body,created_at').or(pair).lt('id', mid).order('id', { ascending: false }).limit(8),
+    sb.from('messages').select('id,from_id,kind,body,created_at').or(pair).gte('id', mid).order('id', { ascending: true }).limit(9)]);
+  if (a.error || b.error) return toast('مقدرتش أفتح الرسالة');
+  const list = [...(a.data || []).reverse(), ...(b.data || [])];
+  const s = sheet(`<h3>الرسالة في سياقها</h3><div class="ctxl" style="max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:4px;background:#f5f0ff;padding:10px;border-radius:12px">${list.map((m) => {
+    const mine = m.from_id === me, txt = m.kind === 'text' ? esc(m.body) : m.kind === 'image' ? '📷 صورة' : m.kind === 'voice' ? '🎤 رسالة صوتية' : '📞 مكالمة';
+    return `<div class="b ${mine ? 'me' : 'them'}" ${String(m.id) === String(mid) ? 'id="hit" style="outline:3px solid #ffb703"' : ''}>${txt}<div class="mt">${fmtDay(m.created_at)} ${fmtTime(m.created_at)}</div></div>`; }).join('')}</div>
+    <button class="btn sec" id="cl" style="margin-top:10px">قفل</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
+  const h = s.querySelector('#hit'); if (h) h.scrollIntoView({ block: 'center' });
+}
+
 function contactSheet(id) {
   const c = byId(id); if (!c) return;
   const s = sheet(`<h3>معلومات الشخص</h3><div class="prof">
@@ -491,7 +536,7 @@ function renderChat() {
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
-    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="callb" title="مكالمة صوتية">📞</button><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
+    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="srchb" title="بحث في المحادثة">🔍</button><button class="ib" id="callb" title="مكالمة صوتية">📞</button><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
     <div class="conn ${S.wsOk ? 'hidden' : ''}" id="connbar">بيتصل بالسيرفر…</div>
     <div class="msgs" id="msgs"></div>
     <div class="bar">
@@ -507,6 +552,7 @@ function renderChat() {
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
   document.getElementById('callb').onclick = () => startCall(S.cur);
   document.getElementById('wpb').onclick = wallpaperSheet;
+  document.getElementById('srchb').onclick = () => searchSheet(S.cur);
   applyWallpaper();
   document.getElementById('snd').onclick = send;
   document.getElementById('mic').onclick = startRecording;
