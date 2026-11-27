@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '12';
+const BUILD = '13';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -41,7 +41,7 @@ const SB_KEY = 'sb_publishable_QeMbFx5H3mRw9_kWdSBarw_a5owjM4y'; // publishable 
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 const emailOf = (wid) => `${String(wid).trim().toLowerCase()}@wanas-users.example.com`;
 
-const S = { mutes: new Set(), pushOn: false, wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
+const S = { blocked: new Set(), mutes: new Set(), pushOn: false, wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
 const ONLINE_MS = 45000;
 
 async function signupCall(body, authed) {
@@ -375,7 +375,13 @@ function contactSheet(id) {
     <small style="color:var(--mu)">${esc(lastSeenText(c))}</small></div>
     <div class="about"><span>النبذة</span><p>${c.bio ? esc(c.bio) : '<i>لسه مكتبش نبذة</i>'}</p></div>
     <button class="btn sec" id="mt">${S.mutes.has(id) ? '🔔 إلغاء كتم الإشعارات' : '🔕 كتم إشعارات المحادثة دي'}</button>
+    <button class="btn sec" id="bl" style="color:#c0262d">${S.blocked.has(id) ? '✅ إلغاء الحظر' : '🚫 حظر'}</button>
     <button class="btn sec" id="cl">قفل</button>`);
+  s.querySelector('#bl').onclick = async () => {
+    const on = !S.blocked.has(id);
+    if (on && !confirm('تحظر ' + c.name + '؟ مش هيقدر يبعتلك رسايل ولا يكلمك، ومش هتقدر تبعتله.')) return;
+    if (await setBlock(id, on)) { s.remove(); if (S.cur === id) renderChat(); toast(on ? 'اتحظر' : 'اتفك الحظر'); }
+  };
   s.querySelector('#mt').onclick = async () => { await toggleMute(id); s.remove(); toast(S.mutes.has(id) ? 'المحادثة اتكتمت، مش هتوصلك إشعارات منها' : 'الإشعارات رجعت للمحادثة دي'); };
   s.querySelector('#cl').onclick = () => s.remove();
 }
@@ -510,6 +516,11 @@ function renderChat() {
     try { const d = await resizeImage(f, 1024, 0.7); if (d.length > 450000) return alert('الصورة كبيرة، جرّب صورة أصغر'); transmit('image', d); } catch { alert('مقدرتش أقرا الصورة'); }
     e.target.value = '';
   };
+  if (S.blocked.has(S.cur)) {
+    document.getElementById('callb').classList.add('hidden');
+    document.querySelector('.bar').outerHTML = '<div class="bar" style="flex-direction:column;gap:6px;text-align:center"><span>🚫 انت حاظر الشخص ده. مفيش رسايل ولا مكالمات بينكم.</span><button class="btn sec" id="unb" style="margin:0">إلغاء الحظر</button></div>';
+    document.getElementById('unb').onclick = async () => { if (await setBlock(S.cur, false)) renderChat(); };
+  }
   renderChatHeader(); renderChatBody(true);
 }
 function renderChatHeader() {
@@ -677,6 +688,7 @@ function callStatus() {
 }
 async function startCall(peer) {
   if (S.call) return;
+  if (S.blocked.has(peer)) return toast('انت حاظر الشخص ده');
   if (!navigator.mediaDevices || !window.RTCPeerConnection) return alert('المتصفح ده مبيدعمش المكالمات');
   const c = (S.call = { id: crypto.randomUUID(), peer, role: 'caller', state: 'calling', profile: byId(peer), muted: false, loud: true, pend: [], t0: 0 });
   callUI(); c.icePromise = getIce();
@@ -823,6 +835,13 @@ async function enablePush() {
 function iosSheet() { const s = sheet(`<h3>الإشعارات على الأيفون</h3><p style="white-space:pre-line;line-height:1.9">${esc(IOS_STEPS)}</p><button class="btn" id="ok">تمام</button>`); s.querySelector('#ok').onclick = () => s.remove(); }
 function openFromPush(id) { if (!id || !S.me) return; if (byId(id)) openChat(id); else refreshContacts().then(() => byId(id) && openChat(id)); }
 async function loadMutes() { const { data } = await sb.from('chat_mutes').select('chat_id'); S.mutes = new Set((data || []).map((r) => r.chat_id)); }
+async function loadBlocks() { const { data } = await sb.from('blocks').select('blocked_id'); S.blocked = new Set((data || []).map((r) => r.blocked_id)); }
+async function setBlock(id, on) {
+  const { error } = on ? await sb.from('blocks').insert({ blocked_id: id }) : await sb.from('blocks').delete().eq('blocked_id', id);
+  if (error) { toast('مقدرتش أنفّذ، جرّب تاني'); return false; }
+  if (on) S.blocked.add(id); else S.blocked.delete(id);
+  return true;
+}
 async function toggleMute(id) {
   if (S.mutes.has(id)) { await sb.from('chat_mutes').delete().eq('chat_id', id); S.mutes.delete(id); }
   else { const { error } = await sb.from('chat_mutes').insert({ chat_id: id }); if (!error) S.mutes.add(id); }
@@ -851,7 +870,7 @@ async function initPush() {
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
   if (!S.me) return renderAuth();
-  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); render();
+  await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); await loadBlocks(); render();
   initPush();
   const qp = new URLSearchParams(location.search), q = qp.get('chat'), qc = qp.get('call');
   if (q || qc) { history.replaceState(null, '', location.pathname); if (qc) ringFromPush(qc, q); else openFromPush(q); }
