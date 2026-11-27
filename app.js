@@ -2,14 +2,14 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '10';
+const BUILD = '11';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
   if (updating) return;
   let v;
   try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; v = String((await r.json()).v); } catch { return; }
-  if (!v || v === BUILD) return;
+  if (!v || !(Number(v) > Number(BUILD))) return; // only ever move forward: a newer client never reloads itself back
   const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet') || S.call || (typeof REC !== 'undefined' && REC.mr);
   if (busy) {
     if (!document.getElementById('upd')) {
@@ -654,6 +654,16 @@ function makePC(c) {
   };
 }
 async function flushIce(c) { const l = c.pend.splice(0); for (const x of l) { try { await c.pc.addIceCandidate(x); } catch {} } }
+// a call notification was tapped: look the invite up (RLS: only mine) and show the ringing screen if it is still ringing
+async function ringFromPush(callId, chat) {
+  if (!callId || !S.me || S.call) return;
+  const { data } = await sb.from('call_signals').select('*').eq('call_id', callId).order('id');
+  const inv = (data || []).find((x) => x.kind === 'invite' && x.to_id === S.me.id);
+  const over = (data || []).some((x) => x.from_id === (inv && inv.from_id) && (x.kind === 'cancel' || x.kind === 'end'));
+  if (!inv || over || Date.now() - new Date(inv.created_at).getTime() > 40000) { toast('المكالمة خلصت أو فاتتك'); if (chat) openFromPush(chat); return; }
+  if (!byId(inv.from_id)) await refreshContacts();
+  incomingCall(inv);
+}
 async function onSignal(s) {
   if (!S.me || s.to_id !== S.me.id) return;
   const c = S.call;
@@ -763,7 +773,7 @@ function pushBanner() {
 async function initPush() {
   if (!('serviceWorker' in navigator)) return;
   try { await navigator.serviceWorker.register('sw.js'); } catch { return; }
-  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'open-chat') openFromPush(e.data.chat); });
+  navigator.serviceWorker.addEventListener('message', (e) => { if (!e.data) return; if (e.data.type === 'open-chat') openFromPush(e.data.chat); else if (e.data.type === 'open-call') ringFromPush(e.data.call, e.data.chat); });
   if (pushSupported() && Notification.permission === 'granted') { try { S.pushOn = await subscribePush(); } catch { S.pushOn = false; } }
   else S.pushOn = false;
   pushBanner();
@@ -774,7 +784,8 @@ async function boot() {
   if (!S.me) return renderAuth();
   await loadWallpapers(); S.isAdmin = (await sb.rpc('is_admin')).data === true; setupRealtime(); await refreshContacts(); await loadMutes(); render();
   initPush();
-  const q = new URLSearchParams(location.search).get('chat'); if (q) { history.replaceState(null, '', location.pathname); openFromPush(q); }
+  const qp = new URLSearchParams(location.search), q = qp.get('chat'), qc = qp.get('call');
+  if (q || qc) { history.replaceState(null, '', location.pathname); if (qc) ringFromPush(qc, q); else openFromPush(q); }
 }
 boot();
 })();
