@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '8';
+const BUILD = '9';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -10,7 +10,7 @@ async function checkUpdate() {
   let v;
   try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; v = String((await r.json()).v); } catch { return; }
   if (!v || v === BUILD) return;
-  const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet') || (typeof REC !== 'undefined' && REC.mr);
+  const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet') || S.call || (typeof REC !== 'undefined' && REC.mr);
   if (busy) {
     if (!document.getElementById('upd')) {
       const b = document.createElement('div'); b.id = 'upd'; b.className = 'upd'; b.textContent = 'في تحديث جديد، اضغط هنا للتحديث';
@@ -80,7 +80,7 @@ function lastSeenText(c) {
 }
 const byId = (id) => S.contacts.find((c) => c.id === id);
 const isOnline = (c) => !!c.lastSeen && Date.now() - new Date(c.lastSeen).getTime() < ONLINE_MS;
-function previewOf(m) { return !m ? 'ابدأ المحادثة' : m.kind === 'image' ? '📷 صورة' : m.kind === 'voice' ? '🎤 رسالة صوتية' : m.body; }
+function previewOf(m) { return !m ? 'ابدأ المحادثة' : m.kind === 'image' ? '📷 صورة' : m.kind === 'voice' ? '🎤 رسالة صوتية' : m.kind === 'call' ? (m.body === 'call' ? '📞 مكالمة صوتية' : '📵 مكالمة') : m.body; }
 
 // ---------- realtime (Supabase Realtime, filtered by RLS per user) ----------
 function setupRealtime() {
@@ -89,6 +89,7 @@ function setupRealtime() {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => onMessage(p.new))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (p) => onMessageUpdate(p.new))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => onProfile(p.new))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals' }, (p) => onSignal(p.new))
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'contacts' }, () => refreshContacts())
     .subscribe((status) => {
       const ok = status === 'SUBSCRIBED';
@@ -409,7 +410,7 @@ function renderChat() {
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
-    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
+    <div class="top"><button class="ib" id="back">→</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="callb" title="مكالمة صوتية">📞</button><button class="ib" id="wpb" title="خلفية المحادثة">🎨</button></div>
     <div class="conn ${S.wsOk ? 'hidden' : ''}" id="connbar">بيتصل بالسيرفر…</div>
     <div class="msgs" id="msgs"></div>
     <div class="bar">
@@ -423,6 +424,7 @@ function renderChat() {
   const t = document.getElementById('txt');
   t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' };
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
+  document.getElementById('callb').onclick = () => startCall(S.cur);
   document.getElementById('wpb').onclick = wallpaperSheet;
   applyWallpaper();
   document.getElementById('snd').onclick = send;
@@ -447,6 +449,7 @@ function renderChatBody(scroll) {
   for (const m of S.msgs[S.cur] || []) {
     const day = fmtDay(m.created_at || Date.now()); if (day !== lastDay) { html += `<div class="day">${day}</div>`; lastDay = day; }
     const mine = m.from_id === S.me.id;
+    if (m.kind === 'call') { html += `<div class="cl">${esc(callLine(m, mine))}<small>${m.created_at ? fmtTime(m.created_at) : ''}</small></div>`; continue; }
     const tick = mine ? (m.pending ? ' 🕓' : m.read_at ? ' ✓✓' : ' ✓') : '';
     html += `<div class="b ${mine ? 'me' : 'them'}">${m.kind === 'image' ? `<img src="${esc(m.body)}" alt="صورة">` : m.kind === 'voice' ? voiceHtml(m) : esc(m.body)}<div class="mt">${m.created_at ? fmtTime(m.created_at) : ''}${tick}</div></div>`;
   }
@@ -553,6 +556,146 @@ async function transmit(kind, body, dur) {
 }
 
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.me) { beat(); if (S.cur) { loadMsgs(S.cur).then(() => { renderChatBody(false); markRead(S.cur); }); } } });
+
+// ---------- voice calls (WebRTC audio, signaling over Supabase Realtime, RLS per conversation) ----------
+const RING_MS = 35000, CONNECT_MS = 25000;
+const arDigits = (s) => String(s).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+const FAILMSG = 'المكالمة ماوصلتش. ممكن شبكة الموبايل بتمنع المكالمات المباشرة، جرّب Wi-Fi';
+async function getIce() {
+  const stun = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  try {
+    const r = await Promise.race([sb.functions.invoke('ice'), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 4000))]);
+    if (r && r.data && Array.isArray(r.data.iceServers)) return r.data.iceServers;
+  } catch {}
+  return stun;
+}
+// supabase-js builders are lazy: they only send when awaited, so this is async on purpose
+async function sigSend(kind, payload, c = S.call) { return await sb.from('call_signals').insert({ to_id: c.peer, call_id: c.id, kind, ...(payload ? { payload } : {}) }); }
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 4500); }
+function ring(on) {
+  try {
+    if (!on) { if (S.ringI) { clearInterval(S.ringI); S.ringI = null; } if (navigator.vibrate) navigator.vibrate(0); return; }
+    const beep = () => { try { const a = (S.ac = S.ac || new (window.AudioContext || window.webkitAudioContext)()); const o = a.createOscillator(), g = a.createGain(); o.frequency.value = 520; g.gain.value = 0.12; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.35); } catch {} if (navigator.vibrate) navigator.vibrate([300, 150, 300]); };
+    beep(); S.ringI = setInterval(beep, 2000);
+  } catch {}
+}
+function callUI() {
+  let el = document.getElementById('call'); const c = S.call;
+  if (!c) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'call'; el.className = 'callov'; document.body.appendChild(el); }
+  const p = c.profile || { name: 'مكالمة واردة' };
+  const btns = c.state === 'incoming'
+    ? `<button class="cb red" id="c-dec" title="رفض">✖</button><button class="cb grn" id="c-acc" title="رد">📞</button>`
+    : `<button class="cb ${c.muted ? 'on' : ''}" id="c-mute" title="كتم">${c.muted ? '🔇' : '🎙️'}</button><button class="cb ${c.loud ? 'on' : ''}" id="c-spk" title="السماعة">🔊</button><button class="cb red" id="c-end" title="إنهاء">✖</button>`;
+  el.innerHTML = `<div class="cav">${avatar(p, '')}</div><h2>${esc(p.name)}</h2><div id="cst" class="cst"></div><div class="cbar">${btns}</div>`;
+  const $ = (i) => el.querySelector('#' + i);
+  if ($('c-acc')) $('c-acc').onclick = acceptCall;
+  if ($('c-dec')) $('c-dec').onclick = () => endCall('declined-local');
+  if ($('c-end')) $('c-end').onclick = () => endCall('hangup');
+  if ($('c-mute')) $('c-mute').onclick = () => { c.muted = !c.muted; if (c.stream) c.stream.getAudioTracks().forEach((t) => (t.enabled = !c.muted)); callUI(); };
+  if ($('c-spk')) $('c-spk').onclick = () => { c.loud = !c.loud; if (c.audio) c.audio.volume = c.loud ? 1 : 0.35; callUI(); };
+  callStatus();
+}
+function callStatus() {
+  const c = S.call, el = document.getElementById('cst'); if (!c || !el) return;
+  el.textContent = c.state === 'active' ? arDigits(fmtDur(Date.now() - c.t0)) : c.state === 'incoming' ? 'مكالمة صوتية واردة…' : c.state === 'calling' ? 'بيرن…' : 'بيتوصل…';
+}
+async function startCall(peer) {
+  if (S.call) return;
+  if (!navigator.mediaDevices || !window.RTCPeerConnection) return alert('المتصفح ده مبيدعمش المكالمات');
+  const c = (S.call = { id: crypto.randomUUID(), peer, role: 'caller', state: 'calling', profile: byId(peer), muted: false, loud: true, pend: [], t0: 0 });
+  callUI(); c.icePromise = getIce();
+  try { c.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch { if (S.call === c) { S.call = null; callUI(); } toast('مقدرتش أوصل للمايك. اسمح للمايك من إعدادات المتصفح'); return; }
+  if (S.call !== c) { c.stream.getTracks().forEach((t) => t.stop()); return; }
+  const { error } = await sigSend('invite', null, c);
+  if (error) { if (S.call === c) { S.call = null; callUI(); } c.stream.getTracks().forEach((t) => t.stop()); toast('مفيش اتصال، جرّب تاني'); return; }
+  c.invited = true;
+  c.ringT = setTimeout(() => { if (S.call === c && c.state === 'calling') endCall('missed', 'مفيش رد'); }, RING_MS);
+}
+function incomingCall(s) {
+  const c = (S.call = { id: s.call_id, peer: s.from_id, role: 'callee', state: 'incoming', profile: byId(s.from_id), muted: false, loud: true, pend: [], t0: 0 });
+  callUI(); ring(true);
+  if (!c.profile) sb.from('profiles').select('*').eq('id', s.from_id).maybeSingle().then(({ data }) => { if (data && S.call === c) { c.profile = meOf(data); callUI(); } });
+  if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') { try { new Notification('ونس', { body: 'مكالمة صوتية واردة', icon: 'icon.svg' }); } catch {} }
+  c.ringT = setTimeout(() => { if (S.call === c && c.state === 'incoming') endCall('remote'); }, RING_MS + 5000);
+}
+async function acceptCall() {
+  const c = S.call; if (!c || c.state !== 'incoming') return;
+  ring(false); clearTimeout(c.ringT); c.state = 'connecting'; callUI();
+  try { c.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch { toast('مقدرتش أوصل للمايك. اسمح للمايك من إعدادات المتصفح'); return endCall('declined-local'); }
+  if (S.call !== c) { c.stream.getTracks().forEach((t) => t.stop()); return; }
+  c.ice = await getIce(); if (S.call !== c) return;
+  makePC(c);
+  c.connT = setTimeout(() => { if (S.call === c && c.state !== 'active') endCall('failed', FAILMSG); }, CONNECT_MS + 10000);
+  await sigSend('accept', null, c);
+}
+function makePC(c) {
+  const pc = (c.pc = new RTCPeerConnection({ iceServers: c.ice }));
+  c.stream.getTracks().forEach((t) => pc.addTrack(t, c.stream));
+  pc.onicecandidate = (e) => { if (e.candidate && S.call === c) sigSend('ice', e.candidate.toJSON(), c); };
+  pc.ontrack = (e) => {
+    if (!c.audio) { c.audio = new Audio(); c.audio.autoplay = true; c.audio.setAttribute('playsinline', ''); document.body.appendChild(c.audio); }
+    c.audio.srcObject = e.streams[0]; c.audio.volume = c.loud ? 1 : 0.35;
+    c.audio.play().catch(() => toast('اضغط على الشاشة عشان الصوت يشتغل'));
+  };
+  pc.onconnectionstatechange = () => {
+    if (S.call !== c) return; const st = pc.connectionState;
+    if (st === 'connected') { clearTimeout(c.dcT); if (c.state !== 'active') { c.state = 'active'; c.t0 = Date.now(); clearTimeout(c.connT); c.tick = setInterval(callStatus, 1000); callUI(); } }
+    else if (st === 'failed') endCall('failed', FAILMSG);
+    else if (st === 'disconnected') { clearTimeout(c.dcT); c.dcT = setTimeout(() => { if (S.call === c && pc.connectionState !== 'connected') endCall('failed', 'النت قطع، المكالمة خلصت'); }, 8000); }
+  };
+}
+async function flushIce(c) { const l = c.pend.splice(0); for (const x of l) { try { await c.pc.addIceCandidate(x); } catch {} } }
+async function onSignal(s) {
+  if (!S.me || s.to_id !== S.me.id) return;
+  const c = S.call;
+  if (s.kind === 'invite') {
+    if (Date.now() - new Date(s.created_at).getTime() > 40000) return;
+    if (c) { if (c.id !== s.call_id) await sb.from('call_signals').insert({ to_id: s.from_id, call_id: s.call_id, kind: 'busy' }); return; }
+    return incomingCall(s);
+  }
+  if (!c || c.id !== s.call_id || c.peer !== s.from_id) return; // a signal for any other call is ignored
+  try {
+    if (s.kind === 'accept' && c.role === 'caller' && c.state === 'calling') {
+      clearTimeout(c.ringT); c.state = 'connecting'; callUI(); c.ice = await c.icePromise; if (S.call !== c) return;
+      makePC(c); c.connT = setTimeout(() => { if (S.call === c && c.state !== 'active') endCall('failed', FAILMSG); }, CONNECT_MS);
+      const o = await c.pc.createOffer(); await c.pc.setLocalDescription(o); await sigSend('offer', { type: o.type, sdp: o.sdp }, c);
+    } else if (s.kind === 'offer' && c.role === 'callee' && c.pc) {
+      await c.pc.setRemoteDescription(s.payload); await flushIce(c);
+      const a = await c.pc.createAnswer(); await c.pc.setLocalDescription(a); await sigSend('answer', { type: a.type, sdp: a.sdp }, c);
+    } else if (s.kind === 'answer' && c.role === 'caller' && c.pc) {
+      await c.pc.setRemoteDescription(s.payload); await flushIce(c);
+    } else if (s.kind === 'ice') {
+      if (c.pc && c.pc.remoteDescription) { try { await c.pc.addIceCandidate(s.payload); } catch {} } else c.pend.push(s.payload);
+    } else if (s.kind === 'decline' && c.role === 'caller') endCall('declined', 'رفض المكالمة', true);
+    else if (s.kind === 'busy' && c.role === 'caller') endCall('busy', 'مشغول في مكالمة تانية', true);
+    else if (s.kind === 'cancel' && c.role === 'callee') endCall('remote', 'المكالمة فاتتك', true);
+    else if (s.kind === 'end') endCall('remote', (s.payload && s.payload.why === 'failed') ? FAILMSG : 'المكالمة خلصت', true);
+  } catch (e) { endCall('failed', FAILMSG); }
+}
+function endCall(reason, note, remote) {
+  const c = S.call; if (!c) return; S.call = null;
+  ring(false); clearTimeout(c.ringT); clearTimeout(c.connT); clearTimeout(c.dcT); clearInterval(c.tick);
+  const dur = c.t0 ? Date.now() - c.t0 : 0, wasActive = c.state === 'active';
+  try { c.pc && c.pc.close(); } catch {}
+  if (c.stream) c.stream.getTracks().forEach((t) => t.stop());
+  if (c.audio) { c.audio.srcObject = null; c.audio.remove(); }
+  callUI(); if (note) toast(note);
+  if (!remote) {
+    const kind = c.state === 'calling' ? 'cancel' : reason === 'declined-local' ? 'decline' : 'end';
+    if (c.invited || c.role === 'callee') sigSend(kind, reason === 'failed' ? { why: 'failed' } : null, c);
+  }
+  if (c.invited || c.role === 'callee') setTimeout(() => sb.from('call_signals').delete().eq('call_id', c.id).then(() => {}), 4000);
+  if (c.role === 'caller' && c.invited) {
+    const body = wasActive ? 'call' : reason === 'declined' ? 'declined' : 'missed';
+    sb.from('messages').insert({ to_id: c.peer, kind: 'call', body, ...(wasActive ? { dur_ms: Math.min(dur, 86400000) } : {}) }).select().single().then(({ data }) => { if (data) onMessage(data); });
+  }
+}
+window.WANAS_CALL = () => { const c = S.call; return c ? { state: c.state, role: c.role, ice: c.pc ? c.pc.connectionState : null, muted: c.muted } : null; };
+window.WANAS_CALL_STATS = async () => { const c = S.call; if (!c || !c.pc) return null; let rx = 0, tx = 0; (await c.pc.getStats()).forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') rx += r.bytesReceived || 0; if (r.type === 'outbound-rtp' && r.kind === 'audio') tx += r.bytesSent || 0; }); const snd = c.stream ? c.stream.getAudioTracks()[0] : null; return { rx, tx, trackEnabled: snd ? snd.enabled : null }; };
+const callLine = (m, mine) => m.body === 'call' ? `📞 مكالمة صوتية - ${arDigits(fmtDur(m.dur_ms || 0))}` : m.body === 'missed' ? (mine ? '📵 مكالمة بدون رد' : '📵 مكالمة فائتة') : (mine ? '📵 المكالمة اترفضت' : '📵 رفضت المكالمة');
 
 async function boot() {
   try { S.me = await loadMe(); } catch (e) { if (e.message === 'net') { $app.innerHTML = '<div class="empty">مفيش اتصال… <button class="link" onclick="location.reload()">جرّب تاني</button></div>'; return; } S.me = null; }
