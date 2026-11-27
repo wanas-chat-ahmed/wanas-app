@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '11';
+const BUILD = '12';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -31,7 +31,7 @@ const LS = { get: (k) => localStorage.getItem(k), set: (k, v) => localStorage.se
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ERR = {
   bad_id: 'الـ ID لازم يكون ٣ لـ ٢٠ حرف إنجليزي صغير أو أرقام أو _ أو .',
-  bad_name: 'اكتب اسمك', bad_password: 'الباسورد لازم ٦ حروف على الأقل',
+  bad_name: 'اكتب اسمك', bad_password: 'الباسورد غلط أو أقل من ٦ حروف', bad_code: 'الكود غلط أو الـ ID غلط', too_many: 'محاولات كتير، جرّب بعد ساعة', unauthorized: 'لازم تسجّل دخول تاني',
   id_taken: 'الـ ID ده واخده حد، جرّب غيره', bad_login: 'الـ ID أو الباسورد غلط',
   not_found: 'مفيش حد بالـ ID ده', self: 'ده الـ ID بتاعك انت 😄', server: 'في مشكلة في السيرفر، جرّب تاني', net: 'مفيش اتصال، جرّب تاني',
 };
@@ -44,12 +44,52 @@ const emailOf = (wid) => `${String(wid).trim().toLowerCase()}@wanas-users.exampl
 const S = { mutes: new Set(), pushOn: false, wp: { all: null, chats: {} }, me: null, contacts: [], cur: null, msgs: {}, ch: null, wsOk: false, retry: 0 };
 const ONLINE_MS = 45000;
 
-async function signupCall(body) {
+async function signupCall(body, authed) {
   let r;
-  try { r = await fetch(SB_URL + '/functions/v1/signup', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SB_KEY }, body: JSON.stringify(body) }); }
+  try {
+    const h = { 'Content-Type': 'application/json', apikey: SB_KEY };
+    if (authed) { const { data } = await sb.auth.getSession(); if (data.session) h.Authorization = 'Bearer ' + data.session.access_token; }
+    r = await fetch(SB_URL + '/functions/v1/signup', { method: 'POST', headers: h, body: JSON.stringify(body) });
+  }
   catch { throw new Error('net'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'server');
+  return j;
+}
+function codeSheet(code, title) {
+  const o = document.createElement('div'); o.className = 'sheet';
+  o.innerHTML = `<div class="in"><h3>${title || 'كود استرجاع الحساب'}</h3>
+    <p style="margin:0 0 10px">لو نسيت الباسورد، الكود ده هو الطريقة الوحيدة ترجّع بيها حسابك (مفيش إيميل). <b>اكتبه أو صوّره دلوقتي</b>، مش هيتعرض تاني.</p>
+    <div class="idbox" dir="ltr" style="display:block;text-align:center;font-size:22px;letter-spacing:2px;margin:12px 0;user-select:all">${esc(code)}</div>
+    <button class="btn sec" id="cc">نسخ الكود</button>
+    <label style="display:flex;gap:8px;align-items:center;margin:12px 0"><input type="checkbox" id="ck"> حفظت الكود في مكان آمن</label>
+    <button class="btn" id="ok" disabled>تمام</button></div>`;
+  document.body.appendChild(o);
+  const ck = o.querySelector('#ck'), ok = o.querySelector('#ok');
+  ck.onchange = () => { ok.disabled = !ck.checked; };
+  o.querySelector('#cc').onclick = async () => { try { await navigator.clipboard.writeText(code); toast('اتنسخ'); } catch { toast('انسخه يدوي'); } };
+  ok.onclick = () => o.remove();
+}
+function renderRecover() {
+  $app.innerHTML = `<div class="screen auth"><div class="card"><img class="logo" src="icon.svg" alt="">
+    <h1>نسيت كلمة السر</h1><p class="sub">اكتب الـ ID وكود الاسترجاع اللي خدته وقت التسجيل</p>
+    <form id="f" autocomplete="off">
+      <label class="field"><span>ونس ID</span><input id="wid" dir="ltr" autocapitalize="none" spellcheck="false" maxlength="20" required></label>
+      <label class="field"><span>كود الاسترجاع</span><input id="rc" dir="ltr" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" required></label>
+      <label class="field"><span>باسورد جديد</span><input id="pw" type="password" dir="ltr" minlength="6" required></label>
+      <div class="err" id="err"></div><button class="btn" id="go">تغيير الباسورد</button></form>
+    <button class="link" id="bk">رجوع</button></div></div>`;
+  document.getElementById('bk').onclick = () => renderAuth('login');
+  document.getElementById('f').onsubmit = async (e) => {
+    e.preventDefault(); const go = document.getElementById('go'), err = document.getElementById('err'); go.disabled = true; err.textContent = 'لحظة…';
+    try {
+      const wid = document.getElementById('wid').value.trim().toLowerCase(), pw = document.getElementById('pw').value;
+      const j = await signupCall({ action: 'recover', wanasId: wid, code: document.getElementById('rc').value, newPassword: pw });
+      const { error } = await sb.auth.signInWithPassword({ email: emailOf(wid), password: pw });
+      if (error) throw new Error('bad_login');
+      boot(); codeSheet(j.code, 'كود استرجاع جديد (القديم اتلغى)');
+    } catch (x) { err.textContent = ERR[x.message] || ERR.server; go.disabled = false; }
+  };
 }
 const fail = (error) => { if (error) { const m = (error.message || '').trim(); throw new Error(/not_found|self|unauthorized/.test(m) ? m.match(/not_found|self|unauthorized/)[0] : /fetch|network/i.test(m) ? 'net' : 'server'); } };
 
@@ -204,12 +244,14 @@ function renderAuth(mode = 'login') {
     go.disabled = true; err.textContent = 'لحظة… (أول مرة بعد فترة ممكن ياخد حوالي دقيقة لحد ما السيرفر يصحى)';
     try {
       const wid = document.getElementById('wid').value.trim().toLowerCase(), pw = document.getElementById('pw').value;
-      if (mode === 'signup') await signupCall({ wanasId: wid, password: pw, name: document.getElementById('name').value });
+      let rcode = null;
+      if (mode === 'signup') rcode = (await signupCall({ wanasId: wid, password: pw, name: document.getElementById('name').value })).code;
       const { error } = await sb.auth.signInWithPassword({ email: emailOf(wid), password: pw });
       if (error) throw new Error(/fetch|network/i.test(error.message) ? 'net' : 'bad_login');
-      boot();
+      boot(); if (rcode) codeSheet(rcode);
     } catch (x) { err.textContent = ERR[x.message] || ERR.server; go.disabled = false; }
   };
+  if (mode === 'login') { const fb = document.createElement('button'); fb.className = 'link'; fb.textContent = 'نسيت كلمة السر؟'; fb.onclick = renderRecover; document.getElementById('sw').after(fb); }
 }
 
 function renderListIf() { if (!S.cur && S.me) renderList(); }
@@ -278,7 +320,10 @@ function profileSheet() {
     <button class="btn" id="save">حفظ</button>
     <button class="btn sec" id="notif">${S.pushOn ? '🔔 الإشعارات شغالة (دوس للإيقاف)' : '🔔 تفعيل الإشعارات'}</button>
     ${S.isAdmin ? '<button class="btn sec" id="stats">📊 إحصائيات</button>' : ''}
-    <button class="btn sec" id="out" style="color:#c0262d">تسجيل خروج</button>`);
+    <button class="btn sec" id="cpw">🔑 تغيير الباسورد</button>
+    <button class="btn sec" id="rcg">🛟 كود استرجاع جديد</button>
+    <button class="btn sec" id="out" style="color:#c0262d">تسجيل خروج</button>
+    <button class="btn sec" id="del" style="color:#c0262d">🗑 مسح حسابي نهائي</button>`);
   const file = s.querySelector('#file'); let photo = null;
   s.querySelector('#ph').onclick = () => file.click();
   file.onchange = async () => { if (file.files[0]) { photo = await resizeImage(file.files[0], 256, 0.85); s.querySelector('#pav').innerHTML = avatar({ ...S.me, photo }); } };
@@ -295,6 +340,30 @@ function profileSheet() {
   };
   if (s.querySelector('#stats')) s.querySelector('#stats').onclick = () => { s.remove(); statsSheet(); };
   s.querySelector('#out').onclick = () => { s.remove(); logout(); };
+  s.querySelector('#cpw').onclick = () => { s.remove(); acctSheet('change'); };
+  s.querySelector('#rcg').onclick = () => { s.remove(); acctSheet('regen'); };
+  s.querySelector('#del').onclick = () => { s.remove(); acctSheet('delete'); };
+}
+function acctSheet(kind) {
+  const T = { change: 'تغيير الباسورد', regen: 'كود استرجاع جديد', delete: 'مسح الحساب نهائي' }[kind];
+  const s = sheet(`<h3>${T}</h3>
+    ${kind === 'delete' ? '<p style="margin:0 0 10px;color:#c0262d">هيتمسح حسابك ورسايلك ومحادثاتك وصورك من السيرفر ومينفعش نرجّعهم.</p>' : ''}
+    ${kind === 'regen' ? '<p style="margin:0 0 10px">الكود القديم هيتلغي.</p>' : ''}
+    <label class="field"><span>الباسورد الحالي</span><input id="cp" type="password" dir="ltr"></label>
+    ${kind === 'change' ? '<label class="field"><span>الباسورد الجديد</span><input id="np" type="password" dir="ltr" minlength="6"></label>' : ''}
+    <div class="err" id="aerr"></div>
+    <button class="btn" id="go" ${kind === 'delete' ? 'style="background:#c0262d"' : ''}>${kind === 'delete' ? 'امسح حسابي' : 'تأكيد'}</button>
+    <button class="btn sec" id="cl">إلغاء</button>`);
+  s.querySelector('#cl').onclick = () => s.remove();
+  s.querySelector('#go').onclick = async () => {
+    const go = s.querySelector('#go'), err = s.querySelector('#aerr'); go.disabled = true; err.textContent = '';
+    try {
+      const password = s.querySelector('#cp').value;
+      if (kind === 'change') { await signupCall({ action: 'change', password, newPassword: s.querySelector('#np').value }, true); const npw = s.querySelector('#np').value; await sb.auth.signInWithPassword({ email: emailOf(S.me.wanasId), password: npw }); s.remove(); toast('الباسورد اتغيّر'); }
+      else if (kind === 'regen') { const j = await signupCall({ action: 'regen', password }, true); s.remove(); codeSheet(j.code, 'كود استرجاع جديد (القديم اتلغى)'); }
+      else { await signupCall({ action: 'delete', password }, true); s.remove(); try { await disablePush(); } catch {} teardownRealtime(); try { await sb.auth.signOut({ scope: 'local' }); } catch {} S.me = null; S.cur = null; S.contacts = []; S.msgs = {}; S.isAdmin = false; render(); toast('حسابك اتمسح'); }
+    } catch (x) { err.textContent = ERR[x.message] || ERR.server; go.disabled = false; }
+  };
 }
 
 function contactSheet(id) {
