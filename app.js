@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '16';
+const BUILD = '17';
 window.WANAS_BUILD = BUILD;
 let updating = false;
 async function checkUpdate() {
@@ -276,6 +276,7 @@ async function teacherHome(page = 20) {
   const box = document.getElementById('qbody'); if (!box) return;
   const { data, error } = await sb.rpc('students_overview');
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل الطلاب</div>'; return; }
+  S.qw = {}; for (const x of data) S.qw[x.id] = x.wanas_id;
   const rows = data.slice(0, page).map((s) => `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
     <div class="ls">${esc(s.wanas_id)} · محفوظ ${pctTxt(s.memorized)}${s.revision ? ' · مراجعة ' + arN(s.revision) + ' آية' : ''}</div>
     <div class="qbar">${pbar(s.memorized, s.learning, s.revision, 6236)}</div></div></div>`).join('');
@@ -305,14 +306,20 @@ async function studentProgress(sid, name, teacher) {
   const per = {}; let tm = 0, tl = 0, tr = 0;
   for (const r of data) { (per[r.surah] = per[r.surah] || {})[r.status] = r.cnt; if (r.status === 'memorized') tm += r.cnt; else if (r.status === 'learning') tl += r.cnt; else tr += r.cnt; }
   const surahs = S.qs.map((q) => { const p = per[q.num] || {}; return `<div class="row qs" data-n="${q.num}"><div class="mid"><div class="nm">${arN(q.num)}. ${esc(q.name_ar)}</div><div class="ls">${arN(q.ayahs)} آية${p.memorized ? ' · محفوظ ' + arN(p.memorized) : ''}${p.learning ? ' · بيحفظ ' + arN(p.learning) : ''}${p.revision ? ' · مراجعة ' + arN(p.revision) : ''}</div><div class="qbar">${pbar(p.memorized || 0, p.learning || 0, p.revision || 0, q.ayahs)}</div></div></div>`; }).join('');
-  box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? '<button class="ib" id="sback" style="color:var(--v)">→</button>' : ''}<b style="font-size:18px">${esc(name)}</b></div>
+  box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? '<button class="ib" id="sback" style="color:var(--v)">→</button>' : ''}<b style="font-size:18px;flex:1">${esc(name)}</b>${teacher ? '<button class="btn" id="schat" style="width:auto;padding:8px 16px;margin:0">💬 محادثة</button>' : ''}</div>
     <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--v)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
     <div style="padding:0 14px 6px;display:flex;align-items:center"><b style="flex:1">جلسات التسميع</b>${teacher ? '<button class="btn" id="newrc" style="width:auto;padding:8px 16px;margin:0">＋ تسميع جديد</button>' : ''}</div>
     <div id="rchist" style="padding:0 14px 10px"><div class="empty" style="padding:12px">لحظة…</div></div>
     <div style="padding:0 14px"><b>الخريطة</b></div>
     <div class="list">${surahs}</div>`;
-  if (teacher) { box.querySelector('#sback').onclick = teacherHome; box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
+  if (teacher) { box.querySelector('#schat').onclick = async () => {
+      try {
+        if (!byId(sid)) { const { error } = await sb.rpc('add_contact', { p_wanas_id: S.qw[sid] }); fail(error); await refreshContacts(); }
+        S.view = null; openChat(sid);
+      } catch { toast('مقدرتش أفتح المحادثة، جرّب تاني'); }
+    };
+    box.querySelector('#sback').onclick = teacherHome; box.querySelector('#newrc').onclick = () => recitationSheet(sid, name); }
   loadRecitations(sid, name, teacher);
   box.querySelectorAll('.qs').forEach((r) => (r.onclick = () => surahSheet(sid, name, teacher, +r.dataset.n)));
 }
