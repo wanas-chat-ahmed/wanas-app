@@ -66,3 +66,16 @@ input,textarea{font:inherit;color:inherit}
 .found{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--ln);border-radius:14px;margin:10px 0}
 #viewer{position:fixed;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:20}
 #viewer img{max-width:96%;max-height:96%}
+
+.vn{display:flex;align-items:center;gap:10px;min-width:190px;direction:ltr}
+.vplay{width:36px;height:36px;border-radius:50%;border:0;flex:none;background:var(--a);color:#fff;font-size:15px;cursor:pointer}
+.b.them .vplay{background:var(--v)}
+.vbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden}
+.b.them .vbar{background:var(--vl)}
+.vbar i{display:block;height:100%;width:0;background:#fff}
+.b.them .vbar i{background:var(--v)}
+.vdur{font-size:12px;opacity:.85;min-width:34px;text-align:right}
+.rec{flex:1;display:flex;align-items:center;gap:10px;padding:0 6px;min-height:44px}
+.rec small{color:var(--mu);font-size:12px}
+.rdot{width:12px;height:12px;border-radius:50%;background:#e11d48;animation:rb 1s infinite}
+@keyframes rb{50%{opacity:.25}}
