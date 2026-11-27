@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '25';
+const BUILD = '26';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -280,7 +280,7 @@ async function renderQuran() {
     if (S.isTeacher && !data.some((x) => x.kind === 'quran' && x.teacher_id === S.me.id)) { await sb.rpc('create_subject', { p_name: 'القرآن', p_kind: 'quran' }); ({ data } = await sb.rpc('my_subjects')); }
     S.subs = data || [];
   } catch { document.getElementById('qbody').innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
-  if (!S.subs.some((x) => x.id === S.sub)) S.sub = (S.subs[0] || {}).id;
+  if (!S.subs.some((x) => x.id === S.sub)) S.sub = ((S.isTeacher && S.subs.find((x) => x.teacher_id === S.me.id && x.kind === 'quran')) || S.subs[0] || {}).id;
   subjectBar(); openSubject();
 }
 function subjectBar() {
@@ -305,7 +305,7 @@ function openSubject() {
 async function chapterList(sub, kind) {
   const box = document.getElementById('qbody'); if (!box) return;
   box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
-  const { data, error } = await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', sub.id).eq('kind', kind).limit(1000).order('level').order('position').order('id');
+  const { data, error } = await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', ((S.subs || []).find((x) => x.kind === 'quran' && x.is_open) || sub).id).eq('kind', kind).limit(1000).order('level').order('position').order('id');
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
   if (!data.length) { box.innerHTML = '<div class="empty">لسه مفيش محتوى هنا</div>'; return; }
   data.forEach((x) => (x.kind = kind));
@@ -1330,13 +1330,21 @@ function ring(on) {
 }
 function callUI() {
   let el = document.getElementById('call'); const c = S.call;
-  if (!c) { if (el) el.remove(); return; }
+  if (!c) { if (el) el.remove(); document.body.classList.remove('callmin'); return; }
   if (!el) { el = document.createElement('div'); el.id = 'call'; el.className = 'callov'; document.body.appendChild(el); }
   const p = c.profile || { name: 'مكالمة واردة' };
   const btns = c.state === 'incoming'
     ? `<button class="cb red" id="c-dec" title="رفض">✖</button><button class="cb grn" id="c-acc" title="رد">${IC('phone')}</button>`
     : `<button class="cb ${c.muted ? 'on' : ''}" id="c-mute" title="كتم">${c.muted ? '🔇' : '🎙️'}</button><button class="cb ${c.loud ? 'on' : ''}" id="c-spk" title="السماعة">🔊</button><button class="cb red" id="c-end" title="إنهاء">✖</button>`;
-  el.innerHTML = `<div class="cav">${avatar(p, '')}</div><h2>${esc(p.name)}</h2><div id="cst" class="cst"></div><div class="cbar">${btns}</div>`;
+  if (c.state === 'incoming') c.min = false;
+  el.classList.toggle('mini', !!c.min); document.body.classList.toggle('callmin', !!c.min);
+  if (c.min) {
+    el.innerHTML = `<div class="cmv" id="c-open"><span class="cmd"></span><b>${esc(p.name)}</b><span id="cst" class="cst"></span></div><button class="cb ${c.muted ? 'on' : ''}" id="c-mute">${c.muted ? '🔇' : '🎙️'}</button><button class="cb red" id="c-end">✖</button>`;
+  } else {
+    el.innerHTML = `${c.state !== 'incoming' ? '<button class="cmin" id="c-min" title="تصغير">⌄</button>' : ''}<div class="cav">${avatar(p, '')}</div><h2>${esc(p.name)}</h2><div id="cst" class="cst"></div><div class="cbar">${btns}</div>`;
+  }
+  if (el.querySelector('#c-min')) el.querySelector('#c-min').onclick = () => { c.min = true; callUI(); };
+  if (el.querySelector('#c-open')) el.querySelector('#c-open').onclick = () => { c.min = false; callUI(); };
   const $ = (i) => el.querySelector('#' + i);
   if ($('c-acc')) $('c-acc').onclick = acceptCall;
   if ($('c-dec')) $('c-dec').onclick = () => endCall('declined-local');
