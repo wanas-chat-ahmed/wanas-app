@@ -123,3 +123,15 @@ input,textarea{font:inherit;color:inherit}
 .bc small{font-size:9px;color:var(--mu)}
 .cap{height:10px;border-radius:5px;background:var(--vl);overflow:hidden}.cap i{display:block;height:100%;background:var(--v)}
 .upd{position:fixed;top:0;left:0;right:0;z-index:99;background:var(--a);color:#1f1537;text-align:center;padding:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+
+.cl{align-self:center;background:#e9defc;color:var(--v2);font-size:13px;padding:5px 14px;border-radius:999px;margin:4px 0}
+.cl small{margin-inline-start:8px;opacity:.7;font-size:11px}
+.callov{position:fixed;inset:0;z-index:50;background:linear-gradient(160deg,#3b1d7a,#6d28d9);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px}
+.callov .cav .av{transform:scale(2.2);margin:36px 0 28px}
+.callov h2{margin:0;font-size:26px}
+.cst{font-size:18px;opacity:.9;min-height:26px;margin-bottom:40px}
+.cbar{display:flex;gap:22px}
+.cb{width:66px;height:66px;border-radius:50%;border:0;font-size:26px;background:rgba(255,255,255,.2);color:#fff}
+.cb.on{background:#fff;color:#3b1d7a}
+.cb.red{background:#e11d48}.cb.grn{background:#16a34a}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;z-index:60;background:#1f1537;color:#fff;padding:10px 16px;border-radius:14px;max-width:86%;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)}
