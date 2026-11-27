@@ -216,7 +216,7 @@ function sheet(html) {
 
 function addSheet() {
   const s = sheet(`<h3>إضافة جهة اتصال</h3>
-    <label class="field"><span>ونس ID بتاع الشخص</span><input id="aid" dir="ltr" autocapitalize="none" spellcheck="false" placeholder="hayat"></label>
+    <label class="field"><span>ونس ID بتاع الشخص</span><input id="aid" dir="ltr" autocapitalize="none" spellcheck="false" placeholder="friend.id"></label>
     <div id="res"></div><div class="err" id="aerr"></div>
     <button class="btn" id="find">بحث</button>
     <p style="color:var(--mu);font-size:13px">الـ ID بتاعك: <span class="idbox">${esc(S.me.wanasId)}</span></p>`);
