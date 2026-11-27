@@ -47,6 +47,11 @@ async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS messages_pair ON messages(from_id, to_id, id);
     CREATE INDEX IF NOT EXISTS messages_to ON messages(to_id, read_at);
+    -- RLS on with no policies: Supabase's public Data API (anon/authenticated roles) can read nothing.
+    -- The server connects as the table owner, which bypasses RLS.
+    ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
   `);
 }
 
