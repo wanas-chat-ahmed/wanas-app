@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '21';
+const BUILD = '22';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -269,13 +269,13 @@ async function loadSurahs() {
 }
 async function renderQuran() {
   S.view = 'quran';
-  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">${IC('back')}</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'حسابك: معلّم' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div></div>`;
+  $app.innerHTML = `<div class="screen"><div class="top"><button class="ib" id="qback">${IC('back')}</button><h2>المنصة التعليمية<small>${S.isTeacher ? 'منصتك: معلّم · وفي منصات غيرك: طالب' : 'متابعة تعلّمك'}</small></h2></div><div id="qsubs"></div><div class="wrap" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div></div>`;
   document.getElementById('qback').onclick = () => { S.view = null; render(); };
   try {
     await loadSurahs();
-    let { data, error } = await sb.from('subjects').select('id,name,kind,teacher_id').order('id');
+    let { data, error } = await sb.rpc('my_subjects');
     if (error) throw new Error('server');
-    if (S.isTeacher && !data.some((x) => x.kind === 'quran' && x.teacher_id === S.me.id)) { await sb.rpc('create_subject', { p_name: 'القرآن', p_kind: 'quran' }); ({ data } = await sb.from('subjects').select('id,name,kind,teacher_id').order('id')); }
+    if (S.isTeacher && !data.some((x) => x.kind === 'quran' && x.teacher_id === S.me.id)) { await sb.rpc('create_subject', { p_name: 'القرآن', p_kind: 'quran' }); ({ data } = await sb.rpc('my_subjects')); }
     S.subs = data || [];
   } catch { document.getElementById('qbody').innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
   if (!S.subs.some((x) => x.id === S.sub)) S.sub = (S.subs[0] || {}).id;
@@ -283,18 +283,25 @@ async function renderQuran() {
 }
 function subjectBar() {
   const el = document.getElementById('qsubs'); if (!el) return;
-  if (!S.isTeacher && S.subs.length < 2) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0">${S.subs.map((x) => `<button class="qsub" data-id="${x.id}" style="border:0;border-radius:16px;padding:7px 14px;white-space:nowrap;background:${x.id === S.sub ? 'var(--v)' : 'var(--chip)'};color:${x.id === S.sub ? '#fff' : 'var(--v)'}">${esc(x.name)}</button>`).join('')}${S.isTeacher ? '<button id="qnew" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700">＋ مادة</button>' : ''}</div>`;
+  if (!S.isTeacher && !S.subs.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 0">${S.subs.map((x) => `<button class="qsub" data-id="${x.id}" style="border:0;border-radius:16px;padding:7px 14px;white-space:nowrap;background:${x.id === S.sub ? 'var(--v)' : 'var(--chip)'};color:${x.id === S.sub ? '#fff' : 'var(--v)'}">${esc(x.name)}${x.teacher_id !== S.me.id ? ' <small style="opacity:.8">· ' + esc(x.teacher_name || '') + '</small>' : ''}</button>`).join('')}${S.isTeacher ? '<button id="qnew" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700;white-space:nowrap">＋ مادة</button>' : '<button id="qopen" style="border:0;border-radius:16px;padding:7px 14px;background:var(--a);color:#1f1537;font-weight:700;white-space:nowrap">افتح منصتي</button>'}</div>`;
   el.querySelectorAll('.qsub').forEach((b) => (b.onclick = () => { S.sub = +b.dataset.id; S.qf = 'all'; subjectBar(); openSubject(); }));
   const nb = el.querySelector('#qnew'); if (nb) nb.onclick = newSubjectSheet;
+  const ob = el.querySelector('#qopen'); if (ob) ob.onclick = openMyPlatform;
 }
 function curSub() { return (S.subs || []).find((x) => x.id === S.sub); }
 function openSubject() {
   const sub = curSub(), box = document.getElementById('qbody'); if (!box) return;
-  if (!sub) { box.innerHTML = '<div class="empty">لسه مفيش مواد</div>'; return; }
-  if (S.isTeacher) { sub.kind === 'quran' ? teacherHome() : genericHome(sub); return; }
+  if (!sub) { box.innerHTML = `<div class="empty">لسه مفيش مواد.<br>لو مدرّس عاوز تفتح منصتك وتضيف طلابك:</div><div style="padding:0 24px"><button class="btn" id="openpl">افتح منصتي كمعلّم</button></div>`; const ob = box.querySelector('#openpl'); if (ob) ob.onclick = openMyPlatform; return; }
+  if (sub.teacher_id === S.me.id) { sub.kind === 'quran' ? teacherHome() : genericHome(sub); return; }
   if (sub.kind === 'quran') studentProgress(S.me.id, S.me.name, false);
   else sjStudent(sub, S.me.id, S.me.name, false);
+}
+async function openMyPlatform() {
+  if (!confirm('تفتح منصتك الخاصة؟ هتقدر تعمل مواد وتضيف طلابك بالـ ونس ID. صلاحياتك بتبقى على منصتك بس، ومش هتأثر على أي منصة تانية إنت طالب فيها.')) return;
+  const { error } = await sb.rpc('become_teacher');
+  if (error) { toast('مقدرتش أفتح المنصة، جرّب تاني'); return; }
+  S.isTeacher = true; toast('اتفتحت منصتك'); renderQuran();
 }
 function newSubjectSheet() {
   const s = sheet(`<h3>مادة جديدة</h3><label class="field"><span>اسم المادة (مثلاً: English)</span><input id="sn" maxlength="40"></label>
@@ -305,7 +312,7 @@ function newSubjectSheet() {
     const n = s.querySelector('#sn').value.trim(), e = s.querySelector('#aerr'); if (!n) { e.textContent = 'اكتب اسم المادة'; return; }
     const { data, error } = await sb.rpc('create_subject', { p_name: n, p_kind: s.querySelector('#sk').value });
     if (error) { e.textContent = /duplicate|unique/i.test(error.message) ? 'المادة دي موجودة' : 'مقدرتش أنشئ المادة'; return; }
-    const r = await sb.from('subjects').select('id,name,kind,teacher_id').order('id'); S.subs = r.data || S.subs; S.sub = data; s.remove(); subjectBar(); openSubject();
+    const r = await sb.rpc('my_subjects'); S.subs = r.data || S.subs; S.sub = data; s.remove(); subjectBar(); openSubject();
   };
 }
 async function enrolledIds(subId) { const { data } = await sb.from('subject_students').select('student_id').eq('subject_id', subId); return new Set((data || []).map((x) => x.student_id)); }
@@ -358,7 +365,7 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
     sb.from('sj_lessons').select('id,kind,level,title,body').eq('subject_id', sub.id).order('level').order('position').order('id'),
     sb.from('sj_progress').select('lesson_id,status').eq('subject_id', sub.id).eq('student_id', sid),
     sb.from('sj_vocab').select('id,word,meaning,example,status').eq('subject_id', sub.id).eq('student_id', sid).order('id', { ascending: false }),
-    sb.from('sj_sessions').select('id,session_date,topic,grade,notes').eq('subject_id', sub.id).eq('student_id', sid).order('session_date', { ascending: false }).order('id', { ascending: false })]);
+    sb.from('sj_sessions').select('id,session_date,topic,grade,notes').eq('subject_id', sub.id).eq('student_id', sid).eq('teacher_id', (curSub() || {}).teacher_id || S.me.id).order('session_date', { ascending: false }).order('id', { ascending: false })]);
   if (ls.error || pg.error || vc.error || ss.error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات</div>'; return; }
   const st = {}; for (const p of pg.data) st[p.lesson_id] = p.status;
   const done = ls.data.filter((l) => st[l.id] === 'done').length, known = vc.data.filter((v) => v.status === 'known').length;
@@ -438,7 +445,7 @@ function addStudentSheet() {
 async function studentProgress(sid, name, teacher) {
   const box = document.getElementById('qbody'); if (!box) return;
   box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
-  const { data, error } = await sb.rpc('progress_summary', { p_student: sid });
+  const { data, error } = await sb.rpc('progress_summary', { p_student: sid, p_teacher: (curSub() || {}).teacher_id || null });
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل التقدم</div>'; return; }
   const per = {}; let tm = 0, tl = 0, tr = 0;
   for (const r of data) { (per[r.surah] = per[r.surah] || {})[r.status] = r.cnt; if (r.status === 'memorized') tm += r.cnt; else if (r.status === 'learning') tl += r.cnt; else tr += r.cnt; }
@@ -464,7 +471,7 @@ async function studentProgress(sid, name, teacher) {
 }
 async function loadRevision(sid) {
   const el = document.getElementById('rqlist'); if (!el) return;
-  const { data, error } = await sb.rpc('revision_due', { p_student: sid });
+  const { data, error } = await sb.rpc('revision_due', { p_student: sid, p_teacher: (curSub() || {}).teacher_id || null });
   if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل المراجعة</div>'; return; }
   if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">مفيش مراجعة مستحقة ✅</div>'; return; }
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
@@ -473,7 +480,7 @@ async function loadRevision(sid) {
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
 async function loadRecitations(sid, name, teacher, lim = 15) {
   const el = document.getElementById('rchist'); if (!el) return;
-  const { data, error } = await sb.from('recitations').select('id,session_date,surah,from_ayah,to_ayah,grade,mistakes,notes').eq('student_id', sid).order('session_date', { ascending: false }).order('id', { ascending: false }).limit(lim + 1);
+  const { data, error } = await sb.from('recitations').select('id,session_date,surah,from_ayah,to_ayah,grade,mistakes,notes').eq('student_id', sid).eq('teacher_id', (curSub() || {}).teacher_id || S.me.id).order('session_date', { ascending: false }).order('id', { ascending: false }).limit(lim + 1);
   if (error) { el.innerHTML = '<div class="empty" style="padding:12px">مقدرتش أحمّل الجلسات</div>'; return; }
   if (!data.length) { el.innerHTML = '<div class="empty" style="padding:12px">لسه مفيش جلسات تسميع</div>'; return; }
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
