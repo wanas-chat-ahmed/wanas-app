@@ -12,7 +12,7 @@ self.addEventListener('notificationclick', (e) => {
   if (call && e.action === 'decline') return; // a closed app cannot sign the decline; the caller's 35s ring ends in a missed-call line
   e.waitUntil((async () => {
     const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of list) { if (c.url.startsWith(self.registration.scope)) { await c.focus(); c.postMessage({ type: call ? 'open-call' : 'open-chat', chat, call }); return; } }
+    for (const c of list) { if (c.url.startsWith(self.registration.scope)) { try { await c.focus(); } catch (_) {} c.postMessage({ type: call ? 'open-call' : 'open-chat', chat, call }); return; } }
     await self.clients.openWindow(self.registration.scope + (call ? '?call=' + encodeURIComponent(call) + '&chat=' + encodeURIComponent(chat) : chat ? '?chat=' + encodeURIComponent(chat) : ''));
   })());
 });
