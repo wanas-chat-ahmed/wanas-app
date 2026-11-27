@@ -55,7 +55,7 @@ function lastSeenText(c) {
 }
 const byId = (id) => S.contacts.find((c) => c.id === id);
 const isOnline = (c) => !!c.lastSeen && Date.now() - new Date(c.lastSeen).getTime() < ONLINE_MS;
-function previewOf(m) { return !m ? 'ابدأ المحادثة' : m.kind === 'image' ? '📷 صورة' : m.body; }
+function previewOf(m) { return !m ? 'ابدأ المحادثة' : m.kind === 'image' ? '📷 صورة' : m.kind === 'voice' ? '🎤 رسالة صوتية' : m.body; }
 
 // ---------- realtime (Supabase Realtime, filtered by RLS per user) ----------
 function setupRealtime() {
@@ -295,6 +295,7 @@ function renderChat() {
     <div class="bar">
       <button class="attach" id="att" title="صورة">📷</button><input type="file" id="img" accept="image/*" class="hidden">
       <textarea id="txt" rows="1" placeholder="اكتب رسالة…"></textarea>
+      <button class="attach" id="mic" title="رسالة صوتية">🎤</button>
       <button class="send" id="snd">➤</button>
     </div>
   </div>`;
@@ -303,6 +304,7 @@ function renderChat() {
   t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' };
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
   document.getElementById('snd').onclick = send;
+  document.getElementById('mic').onclick = startRecording;
   document.getElementById('att').onclick = () => document.getElementById('img').click();
   document.getElementById('img').onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -323,24 +325,103 @@ function renderChatBody(scroll) {
     const day = fmtDay(m.created_at || Date.now()); if (day !== lastDay) { html += `<div class="day">${day}</div>`; lastDay = day; }
     const mine = m.from_id === S.me.id;
     const tick = mine ? (m.pending ? ' 🕓' : m.read_at ? ' ✓✓' : ' ✓') : '';
-    html += `<div class="b ${mine ? 'me' : 'them'}">${m.kind === 'image' ? `<img src="${esc(m.body)}" alt="صورة">` : esc(m.body)}<div class="mt">${m.created_at ? fmtTime(m.created_at) : ''}${tick}</div></div>`;
+    html += `<div class="b ${mine ? 'me' : 'them'}">${m.kind === 'image' ? `<img src="${esc(m.body)}" alt="صورة">` : m.kind === 'voice' ? voiceHtml(m) : esc(m.body)}<div class="mt">${m.created_at ? fmtTime(m.created_at) : ''}${tick}</div></div>`;
   }
   box.innerHTML = html;
+  box.querySelectorAll('.vn').forEach((el) => { el.querySelector('.vplay').onclick = () => playVoice(el.dataset.i); syncVoice(el); });
   box.querySelectorAll('img').forEach((i) => (i.onclick = () => { const v = document.getElementById('viewer'); v.querySelector('img').src = i.src; v.classList.remove('hidden'); v.onclick = () => v.classList.add('hidden'); }));
   if (scroll || near) box.scrollTop = box.scrollHeight;
 }
+
+// ---------- voice notes ----------
+const VOICE_MAX_MS = 60000, VOICE_MAX_CHARS = 400000;
+const fmtDur = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+const REC = { mr: null, stream: null, chunks: [], t0: 0, timer: null, cancelled: false };
+
+function voiceHtml(m) {
+  const i = m.id ?? m.cid ?? 'p' + (m.created_at || '');
+  return `<div class="vn" data-i="${esc(i)}"><button class="vplay" type="button">▶</button><div class="vbar"><i></i></div><span class="vdur">${fmtDur(m.dur_ms || 0)}</span></div>`;
+}
+const voiceMsg = (i) => (S.msgs[S.cur] || []).find((m) => String(m.id ?? m.cid) === String(i));
+const VP = { id: null, el: null };
+function syncVoice(el) {
+  const on = VP.id === el.dataset.i && VP.el && !VP.el.paused;
+  el.querySelector('.vplay').textContent = on ? '⏸' : '▶';
+  const m = voiceMsg(el.dataset.i);
+  const pct = VP.id === el.dataset.i && VP.el && m?.dur_ms ? Math.min(100, (VP.el.currentTime * 1000 / m.dur_ms) * 100) : 0;
+  el.querySelector('.vbar i').style.width = pct + '%';
+  if (on && m) el.querySelector('.vdur').textContent = fmtDur(VP.el.currentTime * 1000);
+  else if (m) el.querySelector('.vdur').textContent = fmtDur(m.dur_ms || 0);
+}
+function syncAllVoice() { document.querySelectorAll('.vn').forEach(syncVoice); }
+function playVoice(i) {
+  const m = voiceMsg(i); if (!m || m.pending) return;
+  if (VP.id === String(i) && VP.el) { VP.el.paused ? VP.el.play() : VP.el.pause(); syncAllVoice(); return; }
+  if (VP.el) VP.el.pause();
+  const a = new Audio(m.body); VP.id = String(i); VP.el = a;
+  a.ontimeupdate = syncAllVoice; a.onpause = syncAllVoice; a.onplay = syncAllVoice;
+  a.onended = () => { VP.id = null; VP.el = null; syncAllVoice(); };
+  a.onerror = () => { VP.id = null; VP.el = null; syncAllVoice(); alert('الجهاز ده مش قادر يشغّل الرسالة الصوتية دي'); };
+  a.play().catch(() => {});
+}
+
+async function startRecording() {
+  if (REC.mr) return;
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return alert('المتصفح ده مبيدعمش تسجيل الصوت');
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch { return alert('لازم تسمح للمتصفح يستخدم الميكروفون عشان تسجّل'); }
+  const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => MediaRecorder.isTypeSupported(t));
+  const mr = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 24000 });
+  Object.assign(REC, { mr, stream, chunks: [], t0: Date.now(), cancelled: false });
+  mr.ondataavailable = (e) => e.data.size && REC.chunks.push(e.data);
+  mr.onstop = finishRecording;
+  mr.start(250);
+  const bar = document.querySelector('.bar'); if (!bar) return;
+  REC.saved = bar.innerHTML;
+  bar.innerHTML = `<button class="attach" id="rcancel" title="إلغاء" style="color:#c0262d">✕</button>
+    <div class="rec"><span class="rdot"></span><b id="rtime">0:00</b><small>بيسجّل… (أقصى مدة ${fmtDur(VOICE_MAX_MS)})</small></div>
+    <button class="send" id="rsend" title="إرسال">➤</button>`;
+  document.getElementById('rcancel').onclick = () => stopRecording(true);
+  document.getElementById('rsend').onclick = () => stopRecording(false);
+  REC.timer = setInterval(() => {
+    const el = Date.now() - REC.t0, t = document.getElementById('rtime'); if (t) t.textContent = fmtDur(el);
+    if (el >= VOICE_MAX_MS) stopRecording(false);
+  }, 200);
+}
+function stopRecording(cancel) {
+  if (!REC.mr) return;
+  REC.cancelled = cancel; REC.dur = Math.min(Date.now() - REC.t0, VOICE_MAX_MS);
+  clearInterval(REC.timer);
+  try { REC.mr.stop(); } catch { finishRecording(); }
+}
+async function finishRecording() {
+  const { stream, chunks, cancelled, dur, mr } = REC;
+  stream.getTracks().forEach((t) => t.stop());
+  const to = S.cur; REC.mr = null;
+  if (S.cur === to && document.getElementById('msgs')) renderChat();
+  if (cancelled || !chunks.length) return;
+  if (dur < 700) return alert('التسجيل قصير أوي، اضغط وكمّل شوية');
+  const blob = new Blob(chunks, { type: (mr.mimeType || chunks[0].type || 'audio/webm') });
+  const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+  if (!data.startsWith('data:audio/')) return alert('مقدرتش أجهّز التسجيل');
+  if (data.length > VOICE_MAX_CHARS) return alert('الرسالة الصوتية كبيرة أوي. أقصى مدة دقيقة واحدة، سجّل أقصر.');
+  if (S.cur !== to) return;
+  transmit('voice', data, Math.round(dur));
+}
+
 function send() {
   const t = document.getElementById('txt'); const v = t.value.trim(); if (!v) return;
   t.value = ''; t.style.height = 'auto'; transmit('text', v);
 }
-async function transmit(kind, body) {
+async function transmit(kind, body, dur) {
   const to = S.cur, arr = (S.msgs[to] = S.msgs[to] || []);
-  const tmp = { pending: true, from_id: S.me.id, to_id: to, kind, body, created_at: new Date().toISOString() };
+  const tmp = { pending: true, from_id: S.me.id, to_id: to, kind, body, dur_ms: dur ?? null, created_at: new Date().toISOString() };
   arr.push(tmp); renderChatBody(true);
-  const { data, error } = await sb.from('messages').insert({ to_id: to, kind, body }).select().single();
+  const { data, error } = await sb.from('messages').insert({ to_id: to, kind, body, ...(dur != null ? { dur_ms: dur } : {}) }).select().single();
   if (error) {
     arr.splice(arr.indexOf(tmp), 1); renderChatBody(false);
-    alert('الرسالة ماتبعتتش، تأكد من النت وجرّب تاني'); if (kind === 'text') document.getElementById('txt').value = body; return;
+    alert(kind === 'voice' ? 'الرسالة الصوتية ماتبعتتش، تأكد من النت وجرّب تاني' : 'الرسالة ماتبعتتش، تأكد من النت وجرّب تاني'); if (kind === 'text') document.getElementById('txt').value = body; return;
   }
   const i = arr.indexOf(tmp), dup = arr.some((x) => x.id === data.id);
   if (i >= 0) { if (dup) arr.splice(i, 1); else arr[i] = data; }
