@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '33';
+const BUILD = '34';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -14,7 +14,7 @@ async function checkUpdate() {
   let v;
   try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; v = String((await r.json()).v); } catch { return; }
   if (!v || !(Number(v) > Number(BUILD))) return; // only ever move forward: a newer client never reloads itself back
-  const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet') || S.call || (typeof REC !== 'undefined' && REC.mr);
+  const busy = (document.getElementById('txt') && document.getElementById('txt').value.trim()) || document.querySelector('.sheet:not(.out)') || S.call || (typeof REC !== 'undefined' && REC.mr);
   if (busy) {
     if (!document.getElementById('upd')) {
       const b = document.createElement('div'); b.id = 'upd'; b.className = 'upd'; b.textContent = 'في تحديث جديد، اضغط هنا للتحديث';
@@ -34,8 +34,8 @@ const $app = document.getElementById('app');
 const LS = { get: (k) => localStorage.getItem(k), set: (k, v) => localStorage.setItem(k, v), del: (k) => localStorage.removeItem(k) };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ERR = {
-  bad_id: 'الـ ID لازم يكون ٣ لـ ٢٠ حرف إنجليزي صغير أو أرقام أو _ أو .',
-  bad_name: 'اكتب اسمك', bad_password: 'الباسورد غلط أو أقل من ٦ حروف', bad_code: 'الكود غلط أو الـ ID غلط', too_many: 'محاولات كتير، جرّب بعد ساعة', unauthorized: 'لازم تسجّل دخول تاني',
+  bad_id: 'الـ ID لازم يكون 3 لـ 20 حرف إنجليزي صغير أو أرقام أو _ أو .',
+  bad_name: 'اكتب اسمك', bad_password: 'الباسورد غلط أو أقل من 6 حروف', bad_code: 'الكود غلط أو الـ ID غلط', too_many: 'محاولات كتير، جرّب بعد ساعة', unauthorized: 'لازم تسجّل دخول تاني',
   id_taken: 'الـ ID ده واخده حد، جرّب غيره', bad_login: 'الـ ID أو الباسورد غلط',
   not_found: 'مفيش حد بالـ ID ده', self: 'ده الـ ID بتاعك انت 😄', server: 'في مشكلة في السيرفر، جرّب تاني', net: 'مفيش اتصال، جرّب تاني',
 };
@@ -110,14 +110,14 @@ function avatar(u, cls = '', showDot = false) {
   const inner = u.photo ? `<img src="${esc(u.photo)}" alt="">` : esc(initial(u.name));
   return `<div class="av ${cls}">${inner}${showDot && isOnline(u) ? '<span class="dot"></span>' : ''}</div>`;
 }
-const fmtTime = (d) => new Date(d).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+const fmtTime = (d) => new Date(d).toLocaleTimeString('ar-EG-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
 function fmtDay(d) {
   const x = new Date(d), n = new Date();
   const same = (a, b) => a.toDateString() === b.toDateString();
   if (same(x, n)) return 'النهارده';
   const y = new Date(n); y.setDate(n.getDate() - 1);
   if (same(x, y)) return 'امبارح';
-  return x.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+  return x.toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'long' });
 }
 function lastSeenText(c) {
   if (isOnline(c)) return 'متصل دلوقتي';
@@ -348,7 +348,7 @@ async function renderHome() {
   { const v = localStorage.getItem('clkv') || '1'; const hc = document.getElementById('hclk'); if (hc) hc.className = 'hclk v' + v;
     const tick = '<g stroke="#f4c15a" stroke-width="2" stroke-linecap="round">' + Array.from({ length: 12 }, (_, i) => `<path d="M50 9v${i % 3 ? 4 : 8}" transform="rotate(${i * 30} 50 50)"/>`).join('') + '</g>';
     const ck = () => { const e = document.getElementById('hclk'); if (!e) return clearInterval(S.clk); const d = new Date(), h = d.getHours(), m = d.getMinutes(), hh = arN(String(((h + 11) % 12) + 1).padStart(2, '0')), mm = arN(String(m).padStart(2, '0')), ap = h < 12 ? 'ص' : 'م';
-      if (v === '1') { const sc = d.getSeconds(), dt = d.toLocaleDateString('ar-EG-u-nu-arab', { weekday: 'long', day: 'numeric', month: 'long' }), hl = arN(String(((h + 11) % 12) + 1)), mn = arN(String(m).padStart(2, '0')); e.innerHTML = `<div class="rp" dir="ltr"><b>${hl}<span class="cc">:</span>${mn}</b></div><div class="rd"><svg class="i" viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${dt}</span></div>`; }
+      if (v === '1') { const sc = d.getSeconds(), dt = d.toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }), hl = arN(String(((h + 11) % 12) + 1)), mn = arN(String(m).padStart(2, '0')); e.innerHTML = `<div class="rp" dir="ltr"><b>${hl}<span class="cc">:</span>${mn}</b></div><div class="rd"><svg class="i" viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${dt}</span></div>`; }
       else if (v === '2') e.innerHTML = `<b dir="ltr">${hh}<span class="cc">:</span>${mm}</b><small>${ap}</small>`;
       else if (v === '3') e.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" fill="#1e1456" stroke="#f4c15a" stroke-width="3.5"/><circle cx="50" cy="50" r="41" fill="none" stroke="#f4c15a" stroke-opacity=".35" stroke-width="1"/>${tick}<path d="M50 38l3 12-3 12-3-12z" fill="#f4c15a" opacity=".25" transform="rotate(45 50 50)"/><g style="transform-origin:50px 50px;transform:rotate(${((h % 12) + m / 60) * 30}deg)"><path d="M50 52V26" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/></g><g style="transform-origin:50px 50px;transform:rotate(${m * 6}deg)"><path d="M50 54V16" stroke="#ffe08a" stroke-width="3" stroke-linecap="round"/></g><g class="sec" style="transform-origin:50px 50px;animation-delay:-${d.getSeconds()}s"><path d="M50 58V14" stroke="#ff7a59" stroke-width="1.4"/></g><circle cx="50" cy="50" r="4" fill="#f4c15a"/></svg>`;
       else e.innerHTML = `<svg viewBox="0 0 150 90"><defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c0"/><stop offset="1" stop-color="#f4a621"/></linearGradient></defs><path d="M96 8a38 38 0 1 0 0 74a30 30 0 1 1 0-74z" fill="url(#cg)" transform="translate(14 0)"/><circle cx="140" cy="14" r="2.6" fill="#fff3c0"/><path d="M134 68l1.6 3.6 3.6 1.6-3.6 1.6-1.6 3.6-1.6-3.6-3.6-1.6 3.6-1.6z" fill="#fff3c0"/></svg><div class="cm3"><b dir="ltr">${hh}:${mm}</b><small>${ap}</small></div>`; };
@@ -390,7 +390,7 @@ async function renderAcct() {
   document.getElementById('a3').onclick = () => { if (S.isTeacher) { if (!(S.subs || []).length) loadSubs().then(newSubjectSheet); else newSubjectSheet(); } else openMyPlatform(); };
   document.getElementById('a4').onclick = logout;
 }
-const arN = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+const arN = (n) => String(n);
 async function loadSurahs() {
   if (S.qs) return S.qs;
   const { data, error } = await sb.from('quran_surahs').select('num,name_ar,name_en,ayahs').order('num');
@@ -455,7 +455,8 @@ async function chapterList(sub, kind) {
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
   if (!data.length) { box.innerHTML = '<div class="empty">لسه مفيش محتوى هنا</div>'; return; }
   if (!sub) { try { const r = await fetch('more.json?v=' + BUILD); if (r.ok) (await r.json()).filter((x) => x.kind === kind).forEach((x) => data.push({ id: x.id, level: x.level, title: x.title, body: x.body, position: null })); } catch {} }
-  data.forEach((x) => (x.kind = kind));
+  const wd = (t) => (t == null ? t : String(t).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  data.forEach((x) => { x.kind = kind; x.level = wd(x.level); x.title = wd(x.title); x.body = wd(x.body); });
   const groups = []; for (const l of data) { let g = groups[groups.length - 1]; if (!g || g.name !== l.level) groups.push(g = { name: l.level || '', rows: [] }); g.rows.push(l); }
   const wc = (g) => arN(g.rows.reduce((n, x) => n + (x.body || '').split(/\s+/).length, 0));
   box.innerHTML = `<div class="list">${groups.map((g, gi) => `<div class="qgrp"><button class="qgh" data-g="${gi}"><span>${esc(g.name)}</span><small>${arN(g.rows.length)} · ${wc(g)} كلمة</small></button><div class="qgb" id="g${gi}" hidden>${g.rows.map((l, ri) => `<div class="row chp" data-g="${gi}" data-r="${ri}"><div class="mid"><div class="nm" dir="auto">${esc(l.title)}</div></div></div>`).join('')}</div></div>`).join('')}</div>`;
@@ -525,7 +526,7 @@ async function genericHome(sub, tab = 'students') {
   const list = ov.data.filter((x) => en.has(x.id));
   const late = (x) => !x || x.days_since == null || x.days_since >= 7;
   box.innerHTML = `${tabs}<div class="list">${list.map((s) => { const o = om[s.id] || {}; return `<div class="row" data-id="${s.id}" data-n="${esc(s.name)}">${avatar(s, '', true)}<div class="mid"><div class="nm">${esc(s.name)}</div>
-    <div class="ls">دروس ${arN(o.lessons_done || 0)}/${arN(o.lessons_total || 0)} · كلمات ${arN(o.vocab_known || 0)}/${arN(o.vocab_total || 0)}${o.avg_grade != null ? ' · متوسط ' + arN(Number(o.avg_grade).toFixed(1)) + '/١٠' : ''}</div>
+    <div class="ls">دروس ${arN(o.lessons_done || 0)}/${arN(o.lessons_total || 0)} · كلمات ${arN(o.vocab_known || 0)}/${arN(o.vocab_total || 0)}${o.avg_grade != null ? ' · متوسط ' + arN(Number(o.avg_grade).toFixed(1)) + '/10' : ''}</div>
     <div style="font-size:12px;color:${late(o) ? '#dc2626' : 'var(--mu)'}">${o.days_since == null ? 'لسه مفيش جلسة' : o.days_since === 0 ? 'جلسة النهارده' : 'آخر جلسة من ' + arN(o.days_since) + ' يوم'}</div></div><button class="btn" data-chat="${s.id}" style="width:auto;padding:6px 12px;margin:0;display:inline-flex;align-items:center">${IC('chat')}</button></div>`; }).join('') || '<div class="empty">لسه مفيش طلاب في المادة دي. دوس ＋ وضيف طالب بالـ ونس ID بتاعه.</div>'}</div><button class="fab" id="qadd" title="إضافة طالب">${IC('plus')}</button>`;
   bind();
   box.querySelectorAll('[data-chat]').forEach((b) => (b.onclick = async (e) => { e.stopPropagation(); openChat(b.dataset.chat); }));
@@ -612,7 +613,7 @@ const GR = [
     ] },
   { id: 'a2-prep', lv: 'A2', ic: '📍', t: 'in / on / at',
     cards: [
-      { h: 'الوقت', p: 'at + الساعة: at 5 o\'clock\non + اليوم والتاريخ: on Friday\nin + الشهر والسنة والفصل: in May, in 2024, in summer', ex: [['See you at 8.', 'نتقابل الساعة ٨.'], ['I was born in May.', 'أنا اتولدت في مايو.']] },
+      { h: 'الوقت', p: 'at + الساعة: at 5 o\'clock\non + اليوم والتاريخ: on Friday\nin + الشهر والسنة والفصل: in May, in 2024, in summer', ex: [['See you at 8.', 'نتقابل الساعة 8.'], ['I was born in May.', 'أنا اتولدت في مايو.']] },
       { h: 'المكان', p: 'at = نقطة: at the door\nin = جوّه: in the room, in Cairo\non = فوق سطح: on the table', ex: [['The book is on the table.', 'الكتاب على الترابيزة.'], ['He lives in Egypt.', 'هو عايش في مصر.']] },
     ],
     q: [
@@ -678,7 +679,7 @@ const GR = [
   { id: 'b1-perfect', lv: 'B1', ic: '🕘', t: 'Present perfect و Past simple',
     cards: [
       { h: 'Past simple', p: 'لحاجة حصلت ووقتها معروف وانتهى.\nكلمات: yesterday, last year, in 2020', ex: [['I visited Alexandria last year.', 'زرت إسكندرية السنة اللي فاتت.']] },
-      { h: 'Present perfect', p: 'have / has + التصريف الثالث.\nلحاجة حصلت من غير وقت معروف، أو لسه مستمرة.\nfor = مدة (for 3 years)\nsince = بداية (since 2018)', ex: [['I have visited Alexandria.', 'أنا زرت إسكندرية قبل كده.'], ['She has lived here since 2018.', 'هي عايشة هنا من ٢٠١٨.']] },
+      { h: 'Present perfect', p: 'have / has + التصريف الثالث.\nلحاجة حصلت من غير وقت معروف، أو لسه مستمرة.\nfor = مدة (for 3 years)\nsince = بداية (since 2018)', ex: [['I have visited Alexandria.', 'أنا زرت إسكندرية قبل كده.'], ['She has lived here since 2018.', 'هي عايشة هنا من 2018.']] },
     ],
     q: [
       { q: 'I ___ him yesterday.', o: ['saw', 'have seen', 'see'], a: 0, w: 'yesterday = ماضي بسيط.' },
@@ -726,7 +727,7 @@ const GR = [
     ] },
   { id: 'b1-pastcont', lv: 'B1', ic: '🌧️', t: 'الماضي المستمر (was / were + ing)',
     cards: [
-      { h: 'الشكل والاستخدام', p: 'بنتكلم عن حاجة كانت شغالة في وقت معين في الماضي.\nالشكل: was / were + الفعل + ing.\n• I / he / she / it ← was\n• you / we / they ← were', ex: [['I was reading at 8 pm.', 'كنت بقرا الساعة ٨.'], ['They were playing outside.', 'كانوا بيلعبوا بره.']] },
+      { h: 'الشكل والاستخدام', p: 'بنتكلم عن حاجة كانت شغالة في وقت معين في الماضي.\nالشكل: was / were + الفعل + ing.\n• I / he / she / it ← was\n• you / we / they ← were', ex: [['I was reading at 8 pm.', 'كنت بقرا الساعة 8.'], ['They were playing outside.', 'كانوا بيلعبوا بره.']] },
       { h: 'مع الماضي البسيط', p: 'الحدث الطويل بـ was / were + ing. والحدث القصير اللي قاطعه بالماضي البسيط، وبنربطهم بـ when أو while.', ex: [['I was sleeping when you called.', 'كنت نايم لما اتصلت.'], ['While she was cooking, he came.', 'وهي بتطبخ، هو جه.']] },
     ],
     q: [
@@ -792,7 +793,7 @@ const GR = [
     ] },
   { id: 'b1-phrasal', lv: 'B1+', ic: '🧩', t: 'أفعال مركبة (Phrasal verbs)',
     cards: [
-      { h: 'فعل + كلمة صغيرة', p: 'لما نضيف كلمة صغيرة (up, down, on, off, out) للفعل بيتغير المعنى.\n• get up = تصحى\n• turn on = تشغّل\n• turn off = تطفّي\n• look for = تدوّر على', ex: [['I get up at six.', 'بصحى الساعة ٦.'], ['Please turn off the light.', 'لو سمحت طفّي النور.']] },
+      { h: 'فعل + كلمة صغيرة', p: 'لما نضيف كلمة صغيرة (up, down, on, off, out) للفعل بيتغير المعنى.\n• get up = تصحى\n• turn on = تشغّل\n• turn off = تطفّي\n• look for = تدوّر على', ex: [['I get up at six.', 'بصحى الساعة 6.'], ['Please turn off the light.', 'لو سمحت طفّي النور.']] },
       { h: 'كمان أفعال مفيدة', p: '• give up = تستسلم\n• come back = ترجع\n• put on = تلبس\n• take off = تخلع\n• look after = تهتم بـ', ex: [['Don\'t give up!', 'ماتستسلمش!'], ['She looks after her little brother.', 'بتهتم بأخوها الصغير.']] },
     ],
     q: [
@@ -910,7 +911,7 @@ function qpUnitFlow(num, a, b, tx, onDone, nextUnit) {
     const head = `<div class="rdbar"><button class="rdb xb" id="cl">${I('x')}</button><div class="gbar thick" style="flex:1;margin:0 10px"><i style="width:${pct}%"></i></div></div>`;
     const title = `<div class="qh">${esc(qpNm(num))} · آيات ${arN(a)}–${arN(b)}</div>`;
     if (st.t === 'listen') {
-      body = `${title}${osay('اسمع كذا مرة', 'وإنت بتبص في المصحف')}${ids.map(rtx).join('')}<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="qpp" style="flex:1;margin:0">${I('play', 'fillw')} اسمع</button><button class="btn sec" id="qsp" style="width:auto;margin:0">${speed === 1 ? 'بطيء ×٠٫٧٥' : 'سرعة عادية'}</button></div>`;
+      body = `${title}${osay('اسمع كذا مرة', 'وإنت بتبص في المصحف')}${ids.map(rtx).join('')}<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="qpp" style="flex:1;margin:0">${I('play', 'fillw')} اسمع</button><button class="btn sec" id="qsp" style="width:auto;margin:0">${speed === 1 ? 'بطيء ×0٫75' : 'سرعة عادية'}</button></div>`;
       foot = '<button class="btn" id="nx">كمّل</button>';
     } else if (st.t === 'repeat') {
       body = `${title}${osay('دلوقتي ردّد إنت', 'تقدر تخفي النص وتجرّب من حفظك')}<div id="qtxt" class="${hide ? 'qhid' : ''}">${ids.map(rtx).join('')}</div><div style="display:flex;gap:8px;margin:10px 0"><button class="btn sec" id="qhd" style="flex:1;margin:0">${hide ? I('eye') + ' أظهر النص' : I('eyeoff') + ' اخفي النص'}</button><button class="btn sec" id="qrp" style="flex:1;margin:0">${I('vol')} اسمع تاني</button></div><div class="qmic"><div style="font-weight:800;margin-bottom:4px">${I('mic')} افحص قراءتي <small style="font-weight:400;color:var(--mu)">(اختياري)</small></div><div class="qnote">الجهاز بيسمعك ويقارن الكلمات بالنص. ده تقدير تقريبي مش حكم، والمعلم هو اللي يعتمد التسميع.</div><button class="btn" id="qmb" style="margin:8px 0 0">${I('mic')} ابدأ</button><div id="qmr"></div></div>`;
@@ -933,7 +934,7 @@ function qpUnitFlow(num, a, b, tx, onDone, nextUnit) {
     if (q('#nx')) q('#nx').onclick = () => { k++; draw(); };
     if (st.t === 'listen') {
       q('#qpp').onclick = () => { if (seq || playing) { stop(); mark(); } else playSeq(); };
-      q('#qsp').onclick = () => { speed = speed === 1 ? 0.75 : 1; au.playbackRate = speed; q('#qsp').textContent = speed === 1 ? 'بطيء ×٠٫٧٥' : 'سرعة عادية'; };
+      q('#qsp').onclick = () => { speed = speed === 1 ? 0.75 : 1; au.playbackRate = speed; q('#qsp').textContent = speed === 1 ? 'بطيء ×0٫75' : 'سرعة عادية'; };
       s.querySelectorAll('.qay').forEach((e) => (e.onclick = () => { seq = false; playAyah(+e.dataset.a); }));
     }
     if (st.t === 'repeat') {
@@ -1070,24 +1071,53 @@ async function dkShard(w) {
   return DK[f];
 }
 function dkSpeak(w) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(w); u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u); } catch {} }
+const DK_N = [5239, 5976, 5959, 6100, 6119, 6117, 5872, 5693, 5696, 5609, 5840, 5864, 5804, 5077, 4457];
+const DK_PG = 40;
 function openDict() {
   const s = sheet('<div></div>'); s.classList.add('full', 'eng', 'dict');
-  s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl">${I('x')}</button><h3>القاموس</h3><span></span></div><div class="qpscroll"><div class="dkbox"><input id="dq" dir="ltr" placeholder="اكتب كلمة بالإنجليزي…" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div id="dres" class="dkres"><div class="empty">اكتب كلمة وهتظهر معناها بالعربي</div></div><div class="mcr">القاموس من مشروع <a href="https://freedict.org/" target="_blank" rel="noopener">FreeDict</a> (English-Arabic، مصدره Arabeyes.org) بترخيص <a href="https://www.gnu.org/licenses/gpl-2.0.html" target="_blank" rel="noopener">GNU GPL v2 أو أحدث</a>. بيانات القاموس منشورة كما هي في <a href="https://download.freedict.org/dictionaries/eng-ara/" target="_blank" rel="noopener">freedict.org</a>.</div></div>`;
+  const total = DK_N.reduce((a, b) => a + b, 0), pages = Math.ceil(total / DK_PG);
+  const L = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl">${I('x')}</button><h3>القاموس</h3><span></span></div><div class="qpscroll"><div class="dkbox"><input id="dq" dir="ltr" placeholder="دوّر على كلمة…" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div id="dlet" class="dklet" dir="ltr">${L.map((c) => `<button data-l="${c}">${c.toUpperCase()}</button>`).join('')}</div><div id="dpg" class="dkpg"></div><div id="dres" class="dkres"></div><div id="dnav" class="dknav"></div><div class="mcr">القاموس من مشروع <a href="https://freedict.org/" target="_blank" rel="noopener">FreeDict</a> (English-Arabic، مصدره Arabeyes.org) بترخيص <a href="https://www.gnu.org/licenses/gpl-2.0.html" target="_blank" rel="noopener">GNU GPL v2 أو أحدث</a>. الملف اتحوّل واتقصّر (أول 3 معاني للكلمة). <a href="legal/FREEDICT-NOTICE.txt" target="_blank" rel="noopener">إشعار الترخيص والتعديلات والمصدر</a>.</div></div>`;
   s.querySelector('#cl').onclick = () => { try { speechSynthesis.cancel(); } catch {} s.remove(); };
-  const q = s.querySelector('#dq'), res = s.querySelector('#dres'); let tk = 0;
+  const q = s.querySelector('#dq'), res = s.querySelector('#dres'), nav = s.querySelector('#dnav'), pgEl = s.querySelector('#dpg'), sc = s.querySelector('.qpscroll');
+  let tk = 0, pos = { f: 0, i: 0 };
+  const rows = (D, keys) => keys.map((k) => `<div class="dkr"><button class="dks" data-w="${esc(k)}" aria-label="نطق">${I('play', 'fillw')}</button><div class="dkw" dir="ltr">${esc(k)}</div><div class="dkm">${esc(D[k])}</div></div>`).join('');
+  const bindSpk = () => res.querySelectorAll('.dks').forEach((b) => (b.onclick = () => dkSpeak(b.dataset.w)));
+  const cum = (f) => DK_N.slice(0, f).reduce((a, b) => a + b, 0);
+  const book = async () => {
+    const my = ++tk; res.innerHTML = '<div class="empty">…</div>';
+    let D; try { D = await dkShard(DK_IDX[pos.f]); } catch { res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
+    if (my !== tk) return;
+    const keys = Object.keys(D), part = keys.slice(pos.i, pos.i + DK_PG), g = cum(pos.f) + pos.i;
+    res.innerHTML = rows(D, part); bindSpk(); sc.scrollTop = 0;
+    const lt = part[0] ? part[0][0] : '';
+    s.querySelectorAll('#dlet button').forEach((b) => b.classList.toggle('on', b.dataset.l === lt));
+    pgEl.textContent = `صفحة ${arN(Math.floor(g / DK_PG) + 1)} من ${arN(pages)} · ${part[0] || ''} ← ${part[part.length - 1] || ''}`;
+    nav.innerHTML = `<button id="dnx" ${g + DK_PG >= total ? 'disabled' : ''}>التالي ›</button><button id="dpv" ${g <= 0 ? 'disabled' : ''}>‹ السابق</button>`;
+    nav.querySelector('#dnx').onclick = () => { pos.i += DK_PG; if (pos.i >= keys.length) { pos = { f: pos.f + 1, i: 0 }; } book(); };
+    nav.querySelector('#dpv').onclick = async () => { if (pos.i - DK_PG >= 0) pos.i -= DK_PG; else if (pos.f > 0) { const pf = pos.f - 1; const n = DK_N[pf]; pos = { f: pf, i: Math.max(0, n - DK_PG) }; } else pos.i = 0; book(); };
+  };
+  const jump = async (c) => {
+    let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= c) f = i;
+    let D; try { D = await dkShard(DK_IDX[f]); } catch { return; }
+    let i = Object.keys(D).findIndex((k) => k >= c); if (i < 0 && f < DK_IDX.length - 1) { f++; i = 0; } pos = { f, i: Math.max(0, i) }; q.value = ''; book();
+  };
+  s.querySelectorAll('#dlet button').forEach((b) => (b.onclick = () => jump(b.dataset.l)));
+  let tx = 0; sc.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  sc.addEventListener('touchend', (e) => { if (q.value.trim()) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 90) { const b = nav.querySelector(d < 0 ? '#dnx' : '#dpv'); if (b && !b.disabled) b.click(); } }, { passive: true });
   q.oninput = async () => {
     const w = q.value.trim().toLowerCase(), my = ++tk;
-    if (!w) { res.innerHTML = '<div class="empty">اكتب كلمة وهتظهر معناها بالعربي</div>'; return; }
+    if (!w) { s.querySelector('#dlet').hidden = false; pgEl.hidden = false; book(); return; }
+    s.querySelector('#dlet').hidden = true; pgEl.hidden = true; nav.innerHTML = '';
     if (!/^[a-z][a-z'\-]*$/.test(w)) { res.innerHTML = '<div class="empty">اكتب بحروف إنجليزي بس</div>'; return; }
-    let D; try { D = await dkShard(w); } catch { if (my === tk) res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
+    let D; try { let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= w) f = i; D = await dkShard(DK_IDX[f]); } catch { if (my === tk) res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
     if (my !== tk) return;
     const keys = Object.keys(D); const hit = D[w] ? [w] : []; const more = keys.filter((k) => k !== w && k.startsWith(w)).slice(0, 25 - hit.length);
     const all = hit.concat(more);
     if (!all.length) { res.innerHTML = '<div class="empty">مفيش الكلمة دي في القاموس</div>'; return; }
-    res.innerHTML = all.map((k) => `<div class="dkr"><button class="dks" data-w="${esc(k)}" aria-label="نطق">${I('play', 'fillw')}</button><div class="dkw" dir="ltr">${esc(k)}</div><div class="dkm">${esc(D[k])}</div></div>`).join('');
-    res.querySelectorAll('.dks').forEach((b) => (b.onclick = () => dkSpeak(b.dataset.w)));
+    res.innerHTML = rows(D, all); bindSpk();
   };
-  setTimeout(() => q.focus(), 120);
+  book();
 }
 // ---------- build 30: صفحة القراءة (شكل صفحة المصحف) ----------
 const BSM = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
@@ -1115,7 +1145,7 @@ function qpStats() {
   let streak = 0; const dt = new Date(); if (!days.has(qdDay(dt.getTime()))) dt.setDate(dt.getDate() - 1);
   while (days.has(qdDay(dt.getTime()))) { streak++; dt.setDate(dt.getDate() - 1); }
   const units = us.filter((u) => u.stars).length, stars = us.reduce((n, u) => n + (u.stars || 0), 0), three = us.filter((u) => u.stars === 3).length, rv = us.reduce((n, u) => n + Math.max(0, (u.rv || 0) - 1), 0);
-  const B = [['b1', I('leaf'), 'أول جزء', units >= 1], ['b3', I('flame'), '٣ أيام ورا بعض', streak >= 3], ['b7', I('trophy'), '٧ أيام ورا بعض', streak >= 7], ['b10', I('book'), '١٠ أجزاء', units >= 10], ['s5', I('star'), '٥ أجزاء بـ٣ نجوم', three >= 5], ['rv', I('rep'), 'راجعت ٥ مرات', rv >= 5]];
+  const B = [['b1', I('leaf'), 'أول جزء', units >= 1], ['b3', I('flame'), '3 أيام ورا بعض', streak >= 3], ['b7', I('trophy'), '7 أيام ورا بعض', streak >= 7], ['b10', I('book'), '10 أجزاء', units >= 10], ['s5', I('star'), '5 أجزاء بـ3 نجوم', three >= 5], ['rv', I('rep'), 'راجعت 5 مرات', rv >= 5]];
   return { streak, units, stars, badges: B.filter((b) => b[3]), all: B };
 }
 const qpStrip = () => { const st = qpStats(); return `<div class="qstat"><div><b>${I('flame', 'fl')}${arN(st.streak)}</b><small>أيام ورا بعض</small></div><div><b>${I('star', 'st')}${arN(st.stars)}</b><small>نجوم</small></div><div><b>${I('book', 'bk')}${arN(st.units)}</b><small>أجزاء</small></div></div><div class="qbadges">${st.all.map((b) => `<span class="${b[3] ? 'on' : ''}" title="${b[2]}">${b[1]}<small>${b[2]}</small></span>`).join('')}</div>`; };
@@ -1230,7 +1260,7 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
   const done = ls.data.filter((l) => st[l.id] === 'done').length, known = vc.data.filter((v) => v.status === 'known').length;
   const gs = ss.data.filter((x) => x.grade != null), avg = gs.length ? gs.reduce((a, x) => a + x.grade, 0) / gs.length : null;
   const tabs = rd ? '' : `<div style="display:flex;gap:6px;padding:10px 14px 0">${sjTab('الدروس', 'lessons', tab === 'lessons')}${sjTab('المفردات', 'vocab', tab === 'vocab')}${sjTab('الجلسات', 'sessions', tab === 'sessions')}</div>`;
-  const stats = rd ? `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(sub.name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">${arN(ls.data.length)} فصل · اضغط على الفصل عشان تقراه</div></div>` : `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">دروس ${arN(done)}/${arN(ls.data.length)} · كلمات ${arN(known)}/${arN(vc.data.length)} · جلسات ${arN(ss.data.length)}${avg != null ? ' · متوسط ' + arN(avg.toFixed(1)) + '/١٠' : ''}</div></div>`;
+  const stats = rd ? `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(sub.name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">${arN(ls.data.length)} فصل · اضغط على الفصل عشان تقراه</div></div>` : `<div style="padding:10px 14px 0"><b style="font-size:18px">${esc(name)}</b><div style="color:var(--mu);font-size:13px;margin-top:2px">دروس ${arN(done)}/${arN(ls.data.length)} · كلمات ${arN(known)}/${arN(vc.data.length)} · جلسات ${arN(ss.data.length)}${avg != null ? ' · متوسط ' + arN(avg.toFixed(1)) + '/10' : ''}</div></div>`;
   let body = '', fab = '';
   if (tab === 'lessons') {
     const kinds = [['lesson', 'الدروس'], ['grammar', 'القواعد']];
@@ -1240,7 +1270,7 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
     body = vc.data.map((v) => `<div class="row sjv" data-id="${v.id}" data-s="${v.status}"><div class="mid"><div class="nm" dir="auto">${esc(v.word)}${v.meaning ? ` <small style="color:var(--mu)">— ${esc(v.meaning)}</small>` : ''}</div>${v.example ? `<div class="ls" dir="auto">${esc(v.example)}</div>` : ''}</div>${sjBadge(SJV, v.status)}${teacher ? `<button class="ib sjvd" data-id="${v.id}" style="margin-inline-start:6px;color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش كلمات</div>';
     if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
   } else {
-    body = ss.data.map((x) => `<div class="row"><div class="mid"><div class="nm">${esc(x.topic)}${x.grade != null ? ` <b style="color:var(--vt)">${arN(x.grade)}/١٠</b>` : ''}</div><div class="ls">${arN(x.session_date)}</div>${x.notes ? `<div style="font-size:13px;margin-top:2px;white-space:pre-wrap" dir="auto">${esc(x.notes)}</div>` : ''}</div>${teacher ? `<button class="ib sjsd" data-id="${x.id}" style="color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش جلسات</div>';
+    body = ss.data.map((x) => `<div class="row"><div class="mid"><div class="nm">${esc(x.topic)}${x.grade != null ? ` <b style="color:var(--vt)">${arN(x.grade)}/10</b>` : ''}</div><div class="ls">${arN(x.session_date)}</div>${x.notes ? `<div style="font-size:13px;margin-top:2px;white-space:pre-wrap" dir="auto">${esc(x.notes)}</div>` : ''}</div>${teacher ? `<button class="ib sjsd" data-id="${x.id}" style="color:var(--mu);background:var(--vl)">${IC('trash')}</button>` : ''}</div>`).join('') || '<div class="empty">لسه مفيش جلسات</div>';
     if (teacher) fab = `<button class="fab" id="sjadd">${IC('plus')}</button>`;
   }
   box.innerHTML = `${back}${stats}${tabs}<div style="padding:4px 14px 80px">${body}</div>${fab}`;
@@ -1259,9 +1289,9 @@ async function sjStudent(sub, sid, name, teacher, tab = 'lessons') {
       s.querySelector('#cl').onclick = () => s.remove();
       s.querySelector('#go').onclick = async () => { const w = s.querySelector('#w').value.trim(); if (!w) { s.querySelector('#aerr').textContent = 'اكتب الكلمة'; return; } const r = await sb.rpc('add_vocab', { p_subject: sub.id, p_student: sid, p_word: w, p_meaning: s.querySelector('#m').value, p_example: s.querySelector('#x').value }); if (r.error) { s.querySelector('#aerr').textContent = 'مقدرتش أضيف'; return; } s.remove(); re(); }; }
     else { const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-      const s = sheet(`<h3>جلسة جديدة</h3><label class="field"><span>التاريخ</span><input id="d" type="date" value="${today}"></label><label class="field"><span>الموضوع</span><input id="t" maxlength="120"></label><label class="field"><span>الدرجة (٠ - ١٠، اختياري)</span><input id="g" type="number" min="0" max="10" inputmode="numeric"></label><label class="field"><span>ملاحظات</span><textarea id="n" rows="3" maxlength="2000" style="width:100%"></textarea></label><div class="err" id="aerr"></div><button class="btn" id="go">حفظ</button><button class="btn sec" id="cl">إلغاء</button>`);
+      const s = sheet(`<h3>جلسة جديدة</h3><label class="field"><span>التاريخ</span><input id="d" type="date" value="${today}"></label><label class="field"><span>الموضوع</span><input id="t" maxlength="120"></label><label class="field"><span>الدرجة (0 - 10، اختياري)</span><input id="g" type="number" min="0" max="10" inputmode="numeric"></label><label class="field"><span>ملاحظات</span><textarea id="n" rows="3" maxlength="2000" style="width:100%"></textarea></label><div class="err" id="aerr"></div><button class="btn" id="go">حفظ</button><button class="btn sec" id="cl">إلغاء</button>`);
       s.querySelector('#cl').onclick = () => s.remove();
-      s.querySelector('#go').onclick = async () => { const t = s.querySelector('#t').value.trim(), gv = s.querySelector('#g').value; if (!t) { s.querySelector('#aerr').textContent = 'اكتب الموضوع'; return; } if (gv !== '' && (+gv < 0 || +gv > 10)) { s.querySelector('#aerr').textContent = 'الدرجة من ٠ لـ ١٠'; return; }
+      s.querySelector('#go').onclick = async () => { const t = s.querySelector('#t').value.trim(), gv = s.querySelector('#g').value; if (!t) { s.querySelector('#aerr').textContent = 'اكتب الموضوع'; return; } if (gv !== '' && (+gv < 0 || +gv > 10)) { s.querySelector('#aerr').textContent = 'الدرجة من 0 لـ 10'; return; }
         const r = await sb.rpc('add_sj_session', { p_subject: sub.id, p_student: sid, p_date: s.querySelector('#d').value || null, p_topic: t, p_grade: gv === '' ? null : Math.round(+gv), p_notes: s.querySelector('#n').value }); if (r.error) { s.querySelector('#aerr').textContent = 'مقدرتش أحفظ'; return; } s.remove(); re(); }; }
   };
 }
@@ -1314,11 +1344,11 @@ async function studentProgress(sid, name, teacher) {
   for (const r of data) { (per[r.surah] = per[r.surah] || {})[r.status] = r.cnt; if (r.status === 'memorized') tm += r.cnt; else if (r.status === 'learning') tl += r.cnt; else tr += r.cnt; }
   const surahs = S.qs.map((q) => { const p = per[q.num] || {}; return `<div class="row qs" data-n="${q.num}"><div class="mid"><div class="nm">${arN(q.num)}. ${esc(q.name_ar)}</div><div class="ls">${arN(q.ayahs)} آية${p.memorized ? ' · محفوظ ' + arN(p.memorized) : ''}${p.learning ? ' · بيحفظ ' + arN(p.learning) : ''}${p.revision ? ' · مراجعة ' + arN(p.revision) : ''}</div><div class="qbar">${pbar(p.memorized || 0, p.learning || 0, p.revision || 0, q.ayahs)}</div></div></div>`; }).join('');
   box.innerHTML = `<div style="padding:12px 14px"><div style="display:flex;align-items:center;gap:8px">${teacher ? `<button class="ib" id="sback" style="color:var(--vt);background:var(--vl)">${IC('back')}</button>` : ''}<b style="font-size:18px;flex:1">${esc(name)}</b>${teacher ? `<button class="btn" id="schat" style="width:auto;padding:8px 16px;margin:0;display:inline-flex;align-items:center;gap:6px">${IC('chat')} محادثة</button>` : ''}</div>
-    <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--vt)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من ٦٢٣٦ آية</div>${pbar(tm, tl, tr, 6236)}
+    <div style="margin:10px 0"><div style="font-size:30px;font-weight:800;color:var(--vt)">${pctTxt(tm)}</div><div style="color:var(--mu)">محفوظ ${arN(tm)} من 6236 آية</div>${pbar(tm, tl, tr, 6236)}
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:6px">${Object.entries(QST).map(([k, v]) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${v[1]}"></i> ${v[0]}${k === 'learning' ? ' ' + arN(tl) : k === 'revision' ? ' ' + arN(tr) : ''}</span>`).join('')}</div></div></div>
     <div style="padding:0 14px 6px;display:flex;align-items:center"><b style="flex:1">جلسات التسميع</b>${teacher ? '<button class="btn" id="newrc" style="width:auto;padding:8px 16px;margin:0">＋ تسميع جديد</button>' : ''}</div>
     <div id="rchist" style="padding:0 14px 10px"><div class="sk" style="padding:4px 0"><i style="height:48px"></i></div></div>
-    <div style="padding:0 14px 6px"><b>طابور المراجعة</b> <small style="color:var(--mu)">(محفوظ من أكتر من ٣٠ يوم ومتسمّعش)</small></div>
+    <div style="padding:0 14px 6px"><b>طابور المراجعة</b> <small style="color:var(--mu)">(محفوظ من أكتر من 30 يوم ومتسمّعش)</small></div>
     <div id="rqlist" style="padding:0 14px 10px"><div class="sk" style="padding:4px 0"><i style="height:48px"></i></div></div>
     <div style="padding:0 14px"><b>الخريطة</b></div>
     <div class="list">${surahs}</div>`;
@@ -1340,7 +1370,7 @@ async function loadRevision(sid) {
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
   el.innerHTML = data.slice(0, 30).map((r) => `<div style="background:var(--revbg);border-radius:12px;padding:8px 12px;margin-bottom:6px;display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)} <small style="font-weight:400">(${arN(r.cnt)} آية)</small></b><span style="color:var(--mu);font-size:13px">من ${arN(Math.max(1, Math.round((Date.now() - new Date(r.since + 'T12:00:00')) / 86400000)))} يوم</span></div>`).join('') + (data.length > 30 ? '<div style="color:var(--mu);font-size:13px">وفيه غيرهم…</div>' : '') + '<div style="color:var(--mu);font-size:12px">لما تسمّع المدى ده في جلسة تسميع بيتشال من الطابور.</div>';
 }
-const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
+const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'short', year: 'numeric' });
 async function loadRecitations(sid, name, teacher, lim = 15) {
   const el = document.getElementById('rchist'); if (!el) return;
   const { data, error } = await sb.from('recitations').select('id,session_date,surah,from_ayah,to_ayah,grade,mistakes,notes').eq('student_id', sid).eq('teacher_id', (curSub() || {}).teacher_id || S.me.id).order('session_date', { ascending: false }).order('id', { ascending: false }).limit(lim + 1);
@@ -1349,7 +1379,7 @@ async function loadRecitations(sid, name, teacher, lim = 15) {
   const nm = (n) => (S.qs.find((x) => x.num === n) || {}).name_ar || n;
   el.innerHTML = data.slice(0, lim).map((r) => `<div class="rcard" style="background:var(--vl);border-radius:12px;padding:10px 12px;margin-bottom:8px">
     <div style="display:flex;gap:8px"><b style="flex:1">${esc(nm(r.surah))} ${arN(r.from_ayah)}–${arN(r.to_ayah)}</b><span style="color:var(--mu);font-size:13px">${fmtDate(r.session_date)}</span></div>
-    <div style="font-size:14px;margin-top:3px">${r.grade != null ? 'التقدير: <b>' + arN(r.grade) + '/١٠</b> · ' : ''}الأخطاء: <b>${arN(r.mistakes)}</b></div>
+    <div style="font-size:14px;margin-top:3px">${r.grade != null ? 'التقدير: <b>' + arN(r.grade) + '/10</b> · ' : ''}الأخطاء: <b>${arN(r.mistakes)}</b></div>
     ${r.notes ? `<div style="font-size:14px;color:var(--tx);opacity:.85;margin-top:3px;white-space:pre-wrap">${esc(r.notes)}</div>` : ''}
     ${teacher ? `<button class="link" data-del="${r.id}" style="margin:4px 0 0;color:#c0262d;font-size:13px">مسح</button>` : ''}</div>`).join('') + (data.length > lim ? '<button class="btn sec" id="rcmore" style="margin:0">عرض أقدم</button>' : '');
   el.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => { if (!confirm('تمسح الجلسة دي؟')) return; const { error } = await sb.rpc('delete_recitation', { p_id: +b.dataset.del }); if (error) return toast('مقدرتش أمسح'); loadRecitations(sid, name, teacher, lim); }));
@@ -1361,7 +1391,7 @@ function recitationSheet(sid, name) {
     <label class="field"><span>التاريخ</span><input id="rd" type="date" value="${today}"></label>
     <label class="field"><span>السورة</span><select id="rs">${S.qs.map((q) => `<option value="${q.num}">${arN(q.num)}. ${esc(q.name_ar)} (${arN(q.ayahs)})</option>`).join('')}</select></label>
     <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>من آية</span><input id="rf" type="number" min="1" value="1"></label><label class="field" style="flex:1"><span>لآية</span><input id="rt" type="number" min="1" value="1"></label></div>
-    <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>التقدير (٠ لـ ١٠)</span><input id="rg" type="number" min="0" max="10" value="8"></label><label class="field" style="flex:1"><span>عدد الأخطاء</span><input id="rm" type="number" min="0" max="500" value="0"></label></div>
+    <div style="display:flex;gap:8px"><label class="field" style="flex:1"><span>التقدير (0 لـ 10)</span><input id="rg" type="number" min="0" max="10" value="8"></label><label class="field" style="flex:1"><span>عدد الأخطاء</span><input id="rm" type="number" min="0" max="500" value="0"></label></div>
     <label class="field"><span>ملاحظات</span><textarea id="rn" rows="2" maxlength="1000"></textarea></label>
     <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="rk"> علّم المدى ده «محفوظ» في الخريطة</label>
     <div class="err" id="aerr"></div><button class="btn" id="go">حفظ الجلسة</button><button class="btn sec" id="cl">إلغاء</button>`);
@@ -1372,8 +1402,8 @@ function recitationSheet(sid, name) {
   s.querySelector('#go').onclick = async () => {
     const e = s.querySelector('#aerr'), go = s.querySelector('#go'); e.textContent = '';
     const surah = +rs.value, f = +s.querySelector('#rf').value, t = +rt.value, g = s.querySelector('#rg').value, m = +s.querySelector('#rm').value;
-    if (!(f >= 1 && t <= maxA() && f <= t)) { e.textContent = 'المدى غلط (١ لـ ' + arN(maxA()) + ')'; return; }
-    if (g === '' || +g < 0 || +g > 10) { e.textContent = 'التقدير من ٠ لـ ١٠'; return; }
+    if (!(f >= 1 && t <= maxA() && f <= t)) { e.textContent = 'المدى غلط (1 لـ ' + arN(maxA()) + ')'; return; }
+    if (g === '' || +g < 0 || +g > 10) { e.textContent = 'التقدير من 0 لـ 10'; return; }
     go.disabled = true;
     const { error } = await sb.rpc('add_recitation', { p_student: sid, p_date: s.querySelector('#rd').value || null, p_surah: surah, p_from: f, p_to: t, p_grade: +g, p_mistakes: m, p_notes: s.querySelector('#rn').value });
     if (error) { e.textContent = 'مقدرتش أحفظ'; go.disabled = false; return; }
@@ -1414,7 +1444,7 @@ async function surahSheet(sid, name, teacher, num) {
   s.querySelector('#cl').onclick = () => s.remove();
   s.querySelectorAll('[data-s]').forEach((b) => (b.onclick = async () => {
     const f = +s.querySelector('#rf').value, t = +s.querySelector('#rt').value, e = s.querySelector('#aerr');
-    if (!(f >= 1 && t <= q.ayahs && f <= t)) { e.textContent = 'المدى غلط (١ لـ ' + arN(q.ayahs) + ')'; return; }
+    if (!(f >= 1 && t <= q.ayahs && f <= t)) { e.textContent = 'المدى غلط (1 لـ ' + arN(q.ayahs) + ')'; return; }
     const { error } = await sb.rpc('set_progress', { p_student: sid, p_surah: num, p_from: f, p_to: t, p_status: b.dataset.s });
     if (error) { e.textContent = 'مقدرتش أحفظ'; return; }
     s.remove(); studentProgress(sid, name, true).then(() => surahSheet(sid, name, true, num));
@@ -1449,9 +1479,13 @@ function updateConn() { const el = document.getElementById('conn'); if (el) el.t
 
 function sheet(html) {
   const s = document.createElement('div'); s.className = 'sheet'; s.innerHTML = `<div class="in">${html}</div>`;
+  if (/^<h3>(حسابي|تغيير الباسورد|كود استرجاع جديد|مسح الحساب نهائي|كل المستخدمين|لوحة الإحصائيات)<\/h3>/.test(html)) s.classList.add('acs');
   s.onclick = (e) => { if (e.target === s) s.remove(); };
-  document.body.appendChild(s); return s;
+  const rm = Element.prototype.remove;
+  s.remove = () => { if (s.classList.contains('out') || !s.isConnected) return; if (matchMedia('(prefers-reduced-motion: reduce)').matches) { rm.call(s); ovSync(); return; } s.classList.add('out'); ovSync(); setTimeout(() => { rm.call(s); ovSync(); }, 190); };
+  document.body.appendChild(s); ovSync(); return s;
 }
+function ovSync() { document.body.classList.toggle('ov', !!document.querySelector('.sheet:not(.out)')); }
 
 function addSheet() {
   const s = sheet(`<h3>إضافة جهة اتصال</h3>
@@ -1687,32 +1721,32 @@ async function statsSheet() {
   const [a, b] = await Promise.all([sb.rpc('admin_stats'), sb.rpc('admin_platform_stats')]);
   const box = s.querySelector('#st'), data = a.data, p = b.data;
   if (a.error || b.error || !data || !p) { box.innerHTML = '<p class="err">مفيش صلاحية لعرض الإحصائيات دي</p>'; return; }
-  const n = (v) => Number(v ?? 0).toLocaleString('ar-EG');
+  const n = (v) => Number(v ?? 0).toLocaleString('ar-EG-u-nu-latn');
   const card = (t, v) => `<div class="sc"><b>${n(v)}</b><span>${t}</span></div>`;
   const bars = (arr) => { const mx = Math.max(1, ...arr.map((x) => x.n)); return `<div class="bars">${arr.map((x) => `<div class="bc" title="${x.day}: ${x.n}"><i style="height:${Math.round((x.n / mx) * 100)}%"></i><small>${new Date(x.day).getDate()}</small></div>`).join('')}</div>`; };
   box.innerHTML = `<div class="sh">المستخدمين</div><div class="sg">
     ${card('إجمالي المستخدمين', data.users_total)}${card('أونلاين دلوقتي', data.online_now)}
     ${card('معلّمين', p.teachers)}${card('طلاب', p.students)}
-    ${card('نشطين آخر ٢٤ ساعة', data.active_24h)}${card('نشطين آخر ٧ أيام', data.active_7d)}
-    ${card('تسجيلات النهارده', data.signups_today)}${card('تسجيلات آخر ٧ أيام', data.signups_7d)}
+    ${card('نشطين آخر 24 ساعة', data.active_24h)}${card('نشطين آخر 7 أيام', data.active_7d)}
+    ${card('تسجيلات النهارده', data.signups_today)}${card('تسجيلات آخر 7 أيام', data.signups_7d)}
   </div>
-  <div class="sh">تسجيلات جديدة (آخر ١٤ يوم)</div>${bars(data.signups_per_day)}
+  <div class="sh">تسجيلات جديدة (آخر 14 يوم)</div>${bars(data.signups_per_day)}
   <div class="sh">الرسايل</div><div class="sg">
     ${card('إجمالي الرسايل', data.messages_total)}${card('رسايل النهارده', data.messages_today)}
-    ${card('رسايل آخر ٧ أيام', data.messages_7d)}${card('محادثات', data.conversations)}
+    ${card('رسايل آخر 7 أيام', data.messages_7d)}${card('محادثات', data.conversations)}
     ${card('نصوص', data.messages_text)}${card('صور', data.messages_image)}
     ${card('رسايل صوتية', data.messages_voice)}${card('مستخدمين بعتوا رسالة', data.users_who_sent)}
   </div>
-  <div class="sh">رسايل يوميًا (آخر ١٤ يوم)</div>${bars(data.messages_per_day)}
+  <div class="sh">رسايل يوميًا (آخر 14 يوم)</div>${bars(data.messages_per_day)}
   <div class="sh">المنصة التعليمية</div><div class="sg">
     ${card('مواد', p.subjects)}${card('طلاب مسجّلين في مواد', p.enrolled_students)}
-    ${card('جلسات تسميع', p.recitations_total)}${card('تسميع آخر ٧ أيام', p.recitations_7d)}
+    ${card('جلسات تسميع', p.recitations_total)}${card('تسميع آخر 7 أيام', p.recitations_7d)}
     ${card('متوسط درجة التسميع', p.avg_recitation_grade)}${card('آيات محفوظة', p.ayahs_memorized)}
     ${card('دروس', p.lessons)}${card('دروس خلّصها الطلاب', p.lessons_done)}
     ${card('كلمات', p.vocab)}${card('كلمات معروفة', p.vocab_known)}
     ${card('جلسات مواد تانية', p.sj_sessions_total)}${card('متوسط درجة الجلسات', p.avg_sj_grade)}
   </div>
-  <div class="sh">جلسات المنصة يوميًا (آخر ١٤ يوم)</div>${bars(p.sessions_per_day)}
+  <div class="sh">جلسات المنصة يوميًا (آخر 14 يوم)</div>${bars(p.sessions_per_day)}
   <div class="sh">مساحة قاعدة البيانات</div>
   <div class="cap"><i style="width:${Math.min(100, (data.db_mb / data.db_cap_mb) * 100)}%"></i></div>
   <small style="color:var(--mu)">${n(data.db_mb)} من ${n(data.db_cap_mb)} ميجا (الباقة المجانية)</small>`;
@@ -1900,7 +1934,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 // ---------- voice calls (WebRTC audio, signaling over Supabase Realtime, RLS per conversation) ----------
 const RING_MS = 35000, CONNECT_MS = 25000;
-const arDigits = (s) => String(s).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+const arDigits = (s) => String(s).replace(/\d/g, (d) => '0123456789'[d]);
 const FAILMSG = 'المكالمة ماوصلتش. ممكن شبكة الموبايل بتمنع المكالمات المباشرة، جرّب Wi-Fi';
 async function getIce() {
   const stun = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
@@ -2095,7 +2129,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const b64u = (s) => { const r = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((ch) => ch.charCodeAt(0))); };
-const IOS_STEPS = 'عشان الإشعارات تشتغل على الأيفون لازم تضيف ونس للشاشة الرئيسية:\n١. افتح ونس في Safari\n٢. دوس على زرار المشاركة (المربع اللي فيه سهم ⬆️) تحت\n٣. اختار «إضافة إلى الشاشة الرئيسية» وبعدين «إضافة»\n٤. افتح ونس من الأيقونة الجديدة وفعّل الإشعارات\n(محتاج iOS 16.4 أو أحدث)';
+const IOS_STEPS = 'عشان الإشعارات تشتغل على الأيفون لازم تضيف ونس للشاشة الرئيسية:\n1. افتح ونس في Safari\n2. دوس على زرار المشاركة (المربع اللي فيه سهم ⬆️) تحت\n3. اختار «إضافة إلى الشاشة الرئيسية» وبعدين «إضافة»\n4. افتح ونس من الأيقونة الجديدة وفعّل الإشعارات\n(محتاج iOS 16.4 أو أحدث)';
 async function currentSub() { try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch { return null; } }
 async function saveSub(sub) {
   const j = sub.toJSON(); if (!j.endpoint || !j.keys) return false;
@@ -2190,7 +2224,7 @@ function navLayers() {
   if (S.cur) L.push({ k: 'chat', close: () => q('#back')?.click() });
   const v = q('#viewer'); if (v && !v.classList.contains('hidden')) L.push({ k: 'viewer', close: () => v.classList.add('hidden') });
   if (q('#call')) L.push({ k: 'call', close: () => toast('اقفل المكالمة الأول') });
-  document.querySelectorAll('.sheet').forEach((s) => L.push({ k: 'sheet', close: () => s.dispatchEvent(new MouseEvent('click', { bubbles: true })) }));
+  document.querySelectorAll('.sheet:not(.out)').forEach((s) => L.push({ k: 'sheet', close: () => s.dispatchEvent(new MouseEvent('click', { bubbles: true })) }));
   return L;
 }
 let navT = 0;
