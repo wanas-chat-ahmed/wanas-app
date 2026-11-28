@@ -697,3 +697,8 @@ svg.owl{overflow:visible}
 .dkw{font:900 17px system-ui,sans-serif;color:#ffd36b;min-width:84px}.dkm{flex:1;color:#fff;font-weight:700;font-size:15px;line-height:1.6}
 .dks{width:38px;height:38px;border-radius:50%;border:0;background:#ff7a59;display:grid;place-items:center;flex:none}.dks svg{width:16px;height:16px;fill:#fff}
 .dict .mcr{color:rgba(255,255,255,.6)}.dict .mcr a{color:#ffd36b}
+/* build 33: lesson screen is always light (fix white-on-white in dark mode) */
+.sheet.full.eng.lsn .in{--tx:#2b1d3a;--mu:#7a6670;--card:#fff;--ln:#ffd9c4;--chip:#fff0e4;color:#2b1d3a}
+.lsn .gp,.lsn .gq,.lsn .gex,.lsn .gopt,.lsn .ob,.lsn .ob b,.lsn .gex div{color:#2b1d3a}
+.lsn .ob small{color:#7a6670}
+.lsn .btn:not(.sec){color:#fff}.lsn .gopt.ok{color:#067a56}.lsn .gopt.bad{color:#c62828}
