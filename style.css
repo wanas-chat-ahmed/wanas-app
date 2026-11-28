@@ -739,3 +739,11 @@ button,a,.row,.tile,.lrow,.pn{touch-action:manipulation}
 body.ov .screen *,body.ov .screen *::before,body.ov .screen *::after{animation-play-state:paused!important}
 @media (hover:none) and (pointer:coarse){*{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}.sheet{background:rgba(15,8,35,.62)}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* build 35: no vertical travel on tab/screen switches; stable viewport on phones */
+body.nav .screen,body.nav .list>.row,body.nav #qbody .row,body.nav .row i[style*="width"],body.nav .fab{animation:none!important}
+html{height:100%;overflow:hidden}
+body{position:fixed;inset:0;width:100%;overflow:hidden}
+#app{position:absolute;inset:0;height:auto}
+.sk i{animation:none!important}
+.auth{overflow:auto}
+.tin,.screen.tin{animation:none!important}
