@@ -1,0 +1,18 @@
+The dictionary files dict1.json ... dict15.json in this app are a MODIFIED copy of
+"English-Arabic FreeDict Dictionary", version 0.6.3, by Arabeyes.org / FreeDict (http://freedict.org/).
+Copyright (C) 1999-2017 by various authors listed in the original.
+Licence: GNU General Public License, version 2 or (at your option) any later version.
+Full text: GPL-2.0-COPYING.txt in this folder, and https://www.gnu.org/licenses/gpl-2.0.html
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.
+
+CHANGES made (by the Wanas app): converted from TEI XML to JSON; kept single English words only
+(letters, apostrophe, hyphen), lower-cased, up to 14 letters; kept up to 3 Arabic meanings of 40 characters
+or fewer per word; split into 15 alphabetical files. No meanings were edited or added.
+Changes made on 2026-11-28.
+
+CORRESPONDING SOURCE: the unmodified upstream source of version 0.6.3 is at
+https://download.freedict.org/dictionaries/eng-ara/0.6.3/freedict-eng-ara-0.6.3.src.tar.xz
+(sha512 prefix 2604f6ce902e719c61fcf391bef02c...). The conversion script build_dict.py is in this folder.
+The shortened files can be rebuilt with:
+  tar xf freedict-eng-ara-0.6.3.src.tar.xz && python3 build_dict.py eng-ara/eng-ara.tei
+Written offer: on request to the app owner, a copy of the source will be provided.
