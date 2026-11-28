@@ -702,3 +702,8 @@ svg.owl{overflow:visible}
 .lsn .gp,.lsn .gq,.lsn .gex,.lsn .gopt,.lsn .ob,.lsn .ob b,.lsn .gex div{color:#2b1d3a}
 .lsn .ob small{color:#7a6670}
 .lsn .btn:not(.sec){color:#fff}.lsn .gopt.ok{color:#067a56}.lsn .gopt.bad{color:#c62828}
+/* build 33: light-surface screens keep dark text in dark mode */
+.sheet.full.qflow .in,.sheet.full:has(#rd) .in{--tx:#1b1330;--mu:#6f6586;--vt:#6d28d9;--card:#fff;--ln:#ebe5f7;--chip:#e8f3ec;color:#1b1330}
+.sheet.full:has(#rd) .in{background:#f6f3fc}
+.qflow .qay,.qflow .gp,.qflow .gq,.qflow .gex{color:#1b1330}.qflow .gopt{color:#1b1330}
+@media(prefers-color-scheme:dark){:root{--bg:#120d20}}
