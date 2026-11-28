@@ -257,3 +257,19 @@ body.nav .fab{animation:pop .35s var(--ease) .1s both}
 body.callmin #app,body.callmin .app{padding-top:calc(54px + env(safe-area-inset-top))}
 body.callmin .sheet,body.callmin #viewer{top:calc(54px + env(safe-area-inset-top))}
 .callov.mini{align-items:center}.callov.mini .cst{font-size:16px;opacity:1;margin:0}
+@font-face{font-family:"Amiri Quran";font-style:normal;font-display:swap;font-weight:400;src:url(https://cdn.jsdelivr.net/npm/@fontsource/amiri-quran@5.2.5/files/amiri-quran-arabic-400-normal.woff2) format("woff2")}
+.qay{font-family:"Amiri Quran","Cairo Variable",serif;font-size:26px;line-height:2.1;background:var(--chip);border-radius:14px;padding:8px 14px;margin:8px 0;cursor:pointer;direction:rtl}
+.qay.big{font-size:28px;cursor:default}.qay.now{outline:2px solid var(--v);background:#7c3aed22}
+.qay .qn{display:inline-block;min-width:26px;height:26px;line-height:26px;text-align:center;font-family:"Cairo Variable",sans-serif;font-size:12px;border-radius:50%;background:var(--v);color:#fff;margin-inline-end:8px;vertical-align:middle}
+.qhid .qay{filter:blur(9px)}.qh{font-size:13px;color:var(--mu);margin-bottom:2px}
+.qop{font-family:"Amiri Quran","Cairo Variable",serif;font-size:23px;line-height:1.9;text-align:right;direction:rtl}
+.qans{min-height:56px;border:2px dashed var(--ln);border-radius:14px;padding:6px;margin:8px 0}
+.qchip{display:block;width:100%;border:2px solid var(--ln);background:var(--card);color:inherit;border-radius:14px;padding:8px 12px;margin:6px 0;font-family:"Amiri Quran","Cairo Variable",serif;font-size:22px;line-height:1.9;text-align:right;direction:rtl}
+.qchip.got{border-color:var(--v);background:#7c3aed14}
+.qmic{border:2px solid var(--ln);border-radius:16px;padding:12px;margin-top:6px}.qnote{font-size:12.5px;color:var(--mu);line-height:1.6}
+.qmic .btn.rec{background:#dc2626}.qres{margin-top:10px}
+.qa2{font-family:"Amiri Quran","Cairo Variable",serif;font-size:24px;line-height:2.1;direction:rtl}.wok{color:#15803d}.wbad{color:#dc2626;text-decoration:underline wavy}
+.qstat{display:flex;gap:8px;margin:6px 0 8px}.qstat>div{flex:1;background:var(--chip);border-radius:14px;padding:8px 4px;text-align:center}.qstat b{display:block;font-size:19px;color:var(--vt)}.qstat small{font-size:11px;color:var(--mu)}
+.qbadges{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.qbadges span{flex:0 0 auto;text-align:center;font-size:24px;opacity:.28;filter:grayscale(1);min-width:62px}.qbadges span.on{opacity:1;filter:none}.qbadges small{display:block;font-size:10px;color:var(--mu)}
+.qdue{background:var(--chip);border-radius:14px;padding:10px;margin:0 0 10px}.qdue .gopt{margin:6px 0 0}.qnew{background:#fff4cc;color:#6b4e00;border-radius:12px;padding:8px;margin:8px 0;font-weight:700}
+.qhw{background:var(--chip);border-radius:12px;padding:8px 10px;margin:6px 0}.qhw summary{font-weight:700}.qhw div{padding:3px 0}
