@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '34';
+const BUILD = '35';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -305,7 +305,7 @@ function tabbar() {
   const on = tabOf(), un = (S.contacts || []).reduce((n, c) => n + (c.unread || 0), 0);
   return `<nav class="tbar">${TABS.map(([k, n, ic]) => `<a data-tab="${k}" class="${k === on ? 'on' : ''}"><span class="tic">${I(ic)}${k === 'chat' && un ? `<em class="tbd">${un > 99 ? '99+' : un}</em>` : ''}</span>${n}</a>`).join('')}</nav>`;
 }
-function bindTabs() { document.querySelectorAll('.tbar a').forEach((a) => (a.onclick = () => { const k = a.dataset.tab; if (k === S.tab) { const sc = document.querySelector('.wrap'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' }); return; } S.cur = null; S.tab = k; render(); const sc = document.querySelector('.screen'); if (sc) sc.classList.add('tin'); })); }
+function bindTabs() { document.querySelectorAll('.tbar a').forEach((a) => (a.onclick = () => { const k = a.dataset.tab; if (k === S.tab) { const sc = document.querySelector('.wrap'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' }); return; } S.cur = null; S.tab = k; render(); })); }
 function updBadge() { const t = document.querySelector('.tbar a[data-tab="chat"] .tic'); if (!t) return; const un = S.contacts.reduce((n, c) => n + (c.unread || 0), 0); let b = t.querySelector('.tbd'); if (!un) { if (b) b.remove(); return; } if (!b) { b = document.createElement('em'); b.className = 'tbd'; t.appendChild(b); } b.textContent = un > 99 ? '99+' : un; }
 const greet = () => { const h = new Date().getHours(); return h < 5 ? 'سهرة سعيدة' : h < 12 ? 'صباح الخير' : h < 18 ? 'أهلاً' : 'مساء الخير'; };
 const osay = (t, sub) => `<div class="osay">${owlSvg('o')}<div class="ob"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
@@ -356,7 +356,8 @@ async function renderHome() {
   { const sc = document.getElementById('hmb'), sn = sc.querySelector('.hscene'), ow = sc.querySelector('.howl'); sc.onscroll = () => { const y = Math.min(sc.scrollTop, 200); sn.style.transform = `translateY(${y * .35}px)`; ow.style.marginTop = (y * .15) + 'px'; };
     const SAY = isSleep() ? [['هشش... نايم', 'ارجع بعد الصبح'], ['zzz', 'تصبح على خير']] : [['برافو عليك!', 'كل يوم درس صغير بيفرق'], ['إنت قدّها!', 'كمّل وهتحفظ أسرع'], ['فخور بيك', 'السلسلة مستنياك'], ['يلا بينا!', 'اضغط الزر الذهبي']]; let si = 0;
     ow.onclick = () => { ow.classList.remove('hop'); void ow.getBoundingClientRect(); ow.classList.add('hop'); const b = sc.querySelector('.hbub'); const m = SAY[si++ % SAY.length]; b.innerHTML = `<b>${m[0]}</b><small>${m[1]}</small>`; b.classList.add('show'); clearTimeout(S.bt); S.bt = setTimeout(() => b.classList.remove('show'), 2600); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; try { navigator.vibrate && navigator.vibrate(10); } catch {} }; }
-  let subs = []; try { subs = await loadSubs(); } catch { subs = S.subs || []; }
+  const cached = !!S.subs; let subs = S.subs || []; if (!cached) { try { subs = await loadSubs(); } catch { subs = S.subs || []; } }
+  else loadSubs().then((n) => { if (S.tab === 'home' && JSON.stringify(n) !== JSON.stringify(subs)) renderHome(); }).catch(() => {});
   const box = document.getElementById('hbody'); if (!box || S.tab !== 'home') return;
   const g = qpGet(), L = []; QP_ORDER.forEach((n) => { const t = (QTX && QTX.s[n]) ? QTX.s[n].length : 0; });
   const total = 147, done = Object.values(g).filter((u) => u.stars).length, pct = Math.round(done / total * 100);
