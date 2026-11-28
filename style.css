@@ -747,3 +747,43 @@ body{position:fixed;inset:0;width:100%;overflow:hidden}
 .sk i{animation:none!important}
 .auth{overflow:auto}
 .tin,.screen.tin{animation:none!important}
+
+/* build 36: prayer times */
+.hclk{pointer-events:auto!important;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sheet.pry{background:#120a3a;align-items:stretch}
+.sheet.pry .in{max-width:760px;height:100%;max-height:100%;border-radius:0;padding:8px 16px 14px;display:flex;flex-direction:column;box-shadow:none;position:relative;overflow:hidden;color:#fff;animation:fade .25s;background:linear-gradient(180deg,#14093f 0%,#2a1b78 60%,#4b2a8f 100%)}
+.sheet.pry .in::before{display:none}
+.sheet.pry .in.t-dawn{background:linear-gradient(180deg,#2c2a7e 0%,#a2509f 52%,#ff9d6f 100%)}
+.sheet.pry .in.t-day{background:linear-gradient(180deg,#2f66d8 0%,#5ea2f3 55%,#a9d6ff 100%)}
+.sheet.pry .in.t-dusk{background:linear-gradient(180deg,#25226c 0%,#9a3f86 55%,#ff7d52 100%)}
+.pry .qhd{position:relative;z-index:2;padding:8px 0}.pry .qhd h3{color:#fff;font-size:20px}
+.pry .rdb.xb{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+.pcity{height:38px;padding:0 14px;border-radius:19px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);color:#fff;font:800 14px "Cairo Variable",sans-serif}
+.prscroll{position:relative;flex:1;overflow:auto;display:flex;flex-direction:column;min-height:0;z-index:1}
+.pry .orb{position:absolute;top:-70px;left:50%;width:300px;height:300px;margin-left:-150px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,224,138,.55) 0%,rgba(255,224,138,.16) 38%,transparent 68%)}
+.pry .in.t-night .orb{background:radial-gradient(circle,rgba(190,205,255,.4) 0%,rgba(190,205,255,.1) 38%,transparent 68%)}
+.pry .in.t-night::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(1.5px 1.5px at 80% 12%,#fff,transparent),radial-gradient(1px 1px at 55% 28%,#fff,transparent),radial-gradient(1.5px 1.5px at 30% 40%,#ffe9a8,transparent),radial-gradient(1px 1px at 90% 38%,#fff,transparent),radial-gradient(1px 1px at 68% 6%,#fff,transparent)}
+.phero{position:relative;text-align:center;padding:16px 0 18px}
+.phero small{display:block;font-size:14px;font-weight:700;opacity:.85}
+.phero h2{margin:2px 0 6px;font:900 46px/1.1 "Cairo Variable",sans-serif;background:linear-gradient(#fff,#ffe9a8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pcd{font:800 38px/1.1 "Cairo Variable",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:1px;text-shadow:0 2px 14px rgba(0,0,0,.25)}
+.pat{margin-top:8px;font-size:15px;font-weight:700;opacity:.92}.pat b{font-size:19px;font-weight:900}
+.plist{margin:2px 0 10px;border-radius:24px;background:rgba(22,14,78,.46);border:1px solid rgba(255,255,255,.18);overflow:hidden}
+.pz{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:800;font-size:17px}
+.pz:last-child{border-bottom:0}
+.pz .pzt{font:800 19px "Cairo Variable",sans-serif;font-variant-numeric:tabular-nums}.pz .pzt small{font-size:12px;margin-inline-start:5px;opacity:.8}
+.pz.pzs{opacity:.78;font-weight:700}.pz.pzp{opacity:.55}
+.pz.pzn{background:linear-gradient(90deg,#ffbe2e,#ffd86a);color:#3b2300;opacity:1}
+.pnote{font-size:12px;line-height:1.7;opacity:.8;padding:4px 6px 10px;text-align:center}
+.pcp{position:absolute;inset:60px 0 0;z-index:3;background:rgba(14,8,44,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);overflow:auto;padding:16px;animation:fade .2s}
+.pcp[hidden]{display:none}
+.pcg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pcg button{padding:14px 10px;border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;font:800 16px "Cairo Variable",sans-serif}
+.pcg button.on{background:#ffbe2e;color:#3b2300;border-color:#ffbe2e}
+
+.dkbox{display:flex;gap:8px;align-items:center}.dkbox input{flex:1;min-width:0}.dkchip{flex:none;height:48px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font:800 14px "Cairo Variable",sans-serif}.dkchip.on{background:#ffbe2e;color:#3b2300;border-color:#ffbe2e}.dkw{max-width:46%;word-break:break-word}
+
+/* owl bubble: explicit contrast */
+.hwrap .hbub,.hbub{background:#1c1260!important;border:1.5px solid #ffd36b!important;box-shadow:0 8px 22px rgba(10,5,50,.45)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.hwrap .hbub b,.hbub b{color:#ffffff!important;text-shadow:none!important}
+.hwrap .hbub small,.hbub small{color:#ffe9a8!important;opacity:1!important;text-shadow:none!important}
