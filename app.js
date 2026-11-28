@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '30';
+const BUILD = '32';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -299,13 +299,13 @@ const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden=
 <g fill="#ff8aa5"><circle cx="30" cy="380" r="4"/><circle cx="330" cy="400" r="4"/><circle cx="320" cy="470" r="4"/></g>
 </symbol><symbol id="medal" viewBox="0 0 44 44" preserveAspectRatio="xMidYMid meet"><path d="M22 2l5.2 6.6 8.3-1.3 1.3 8.3L43 22l-6.2 6.4-1.3 8.3-8.3-1.3L22 42l-5.2-6.6-8.3 1.3-1.3-8.3L1 22l6.2-6.4 1.3-8.3 8.3 1.3z" fill="#e3f8ef" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/></symbol><symbol id="rosette" viewBox="0 0 32 32" preserveAspectRatio="xMidYMid meet"><path d="M16 1l3.2 5 5.8-1.2L23.8 11 29 14l-5 3.2L25 23l-5.8-1.2L16 27l-3.2-5L7 23l1.2-5.8L3 14l5-3L7 5l5.8 1.2z" fill="#e3f8ef" stroke="#10b981" stroke-width="1.6" stroke-linejoin="round"/></symbol><symbol id="apple" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><path d="M32 20c-8-6-22-2-22 14 0 14 10 26 18 26 3 0 3-1.5 4-1.5s1 1.5 4 1.5c8 0 18-12 18-26 0-16-14-20-22-14z" fill="#ff5a5f"/><path d="M32 20c0-6 3-10 8-12" stroke="#7a4a1c" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M38 12c6-4 12 0 12 0-2 6-9 7-12 0z" fill="#3ec77f"/><path d="M20 30q2-6 8-7" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".6"/></symbol><symbol id="bk" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><rect x="10" y="8" width="44" height="48" rx="6" fill="#4f7cff"/><rect x="16" y="8" width="38" height="48" rx="5" fill="#6f95ff"/><rect x="24" y="18" width="22" height="5" rx="2.5" fill="#fff"/><rect x="24" y="28" width="16" height="4" rx="2" fill="#dbe5ff"/><rect x="10" y="8" width="8" height="48" rx="4" fill="#3558e0"/></symbol><symbol id="pen" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><g transform="rotate(40 32 32)"><rect x="26" y="4" width="12" height="42" rx="3" fill="#ffbe2e"/><rect x="26" y="4" width="12" height="9" rx="3" fill="#ff7a8a"/><path d="M26 46h12l-6 14z" fill="#f6d9a6"/><path d="M29 54h6l-3 6z" fill="#3a2a1a"/></g></symbol><symbol id="bag" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><path d="M20 22c0-10 24-10 24 0" stroke="#8a5a2a" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="10" y="22" width="44" height="36" rx="10" fill="#9b6bff"/><rect x="18" y="38" width="28" height="14" rx="5" fill="#7e4de8"/><circle cx="32" cy="45" r="3" fill="#ffd04d"/></symbol><symbol id="i-gram" viewBox="0 0 24 24"><path d="M4 20l4-12 4 12M5.5 16h5M15 8h5M15 12h5M15 16h5"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 119.5 4a7 7 0 0010.5 10.5z"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0zM7 6H4v2a3 3 0 003 3M17 6h3v2a3 3 0 01-3 3M12 14v4M8 21h8M10 18h4"/></symbol><symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-9 5-14 15-15 0 10-5 15-14 15zM5 19l8-8"/></symbol><symbol id="i-note" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol><symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.7.5 1 1.2 1 2.1h5c0-.9.3-1.6 1-2.1A6 6 0 0012 3z"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0112 5c6 0 10 7 10 7a17 17 0 01-3.2 4M6.6 6.6A16 16 0 002 12s4 7 10 7a9.7 9.7 0 004.4-1M9.9 9.9a3 3 0 004.2 4.2"/></symbol><symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol><symbol id="i-bigstar" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.5 1.2 6.5L12 17.2 6.1 20.4l1.2-6.5L2.5 9.4l6.6-.9z"/></symbol></defs></svg>`;
 const I = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
-const TABS = [['home', 'الرئيسية', 'home'], ['lib', 'المكتبة', 'book'], ['chat', 'الدردشة', 'chat'], ['acct', 'حسابي', 'user']];
-const tabOf = () => (S.tab === 'plat' ? 'home' : S.tab || 'home');
+const TABS = [['home', 'الرئيسية', 'home'], ['chat', 'الدردشة', 'chat'], ['acct', 'حسابي', 'user']];
+const tabOf = () => (S.tab === 'plat' || S.tab === 'lib' ? 'home' : S.tab || 'home');
 function tabbar() {
   const on = tabOf(), un = (S.contacts || []).reduce((n, c) => n + (c.unread || 0), 0);
   return `<nav class="tbar">${TABS.map(([k, n, ic]) => `<a data-tab="${k}" class="${k === on ? 'on' : ''}"><span class="tic">${I(ic)}${k === 'chat' && un ? `<em class="tbd">${un > 99 ? '99+' : un}</em>` : ''}</span>${n}</a>`).join('')}</nav>`;
 }
-function bindTabs() { document.querySelectorAll('.tbar a').forEach((a) => (a.onclick = () => { const k = a.dataset.tab; if (k === tabOf() && S.tab !== 'plat') { const sc = document.querySelector('.wrap'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' }); return; } S.cur = null; S.tab = k; render(); const sc = document.querySelector('.screen'); if (sc) sc.classList.add('tin'); })); }
+function bindTabs() { document.querySelectorAll('.tbar a').forEach((a) => (a.onclick = () => { const k = a.dataset.tab; if (k === S.tab) { const sc = document.querySelector('.wrap'); if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' }); return; } S.cur = null; S.tab = k; render(); const sc = document.querySelector('.screen'); if (sc) sc.classList.add('tin'); })); }
 function updBadge() { const t = document.querySelector('.tbar a[data-tab="chat"] .tic'); if (!t) return; const un = S.contacts.reduce((n, c) => n + (c.unread || 0), 0); let b = t.querySelector('.tbd'); if (!un) { if (b) b.remove(); return; } if (!b) { b = document.createElement('em'); b.className = 'tbd'; t.appendChild(b); } b.textContent = un > 99 ? '99+' : un; }
 const greet = () => { const h = new Date().getHours(); return h < 5 ? 'سهرة سعيدة' : h < 12 ? 'صباح الخير' : h < 18 ? 'أهلاً' : 'مساء الخير'; };
 const osay = (t, sub) => `<div class="osay">${owlSvg('o')}<div class="ob"><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
@@ -374,13 +374,12 @@ async function renderHome() {
     try { const X = await loadQText(); if (!S.qs) await loadSurahs(); const g2 = qpGet(); let pick = null; for (const n of QP_ORDER) { for (const [a] of qpUnits(X.s[n].length)) { if (!(g2[n + ':' + a] || {}).stars) { pick = [n, a]; break; } } if (pick) break; } if (!pick) { toast('خلّصت كل التمارين! 🎉'); return; } qpOpenUnit(pick[0], pick[1], renderHome); } catch { toast('مقدرتش أفتح الدرس، جرّب تاني'); }
   };
 }
-const engDone = () => { try { const g = gpGet(); return GR.filter((_, i) => g[i] && g[i].done).length; } catch { return 0; } };
+const engDone = () => { try { const g = gpGet(); return GR.filter((x) => g[x.id]).length; } catch { return 0; } };
 async function renderAcct() {
   S.tab = 'acct';
   const st = qpStats();
-  $app.innerHTML = `<div class="screen"><div class="wrap scr"><div class="hero short"><svg class="hscene"><use href="#night"/></svg><div class="hrow"><div class="hnm"><b style="font-size:24px">حسابي</b></div></div>
-    <div class="aprof">${avatar(S.me)}<div class="hnm"><b>${esc(S.me.name)}</b><span class="idbox sm">${esc(S.me.wanasId)}</span></div></div></div>
-    <div class="hbody"><div class="qstat tight"><div><b>${arN(st.streak)}</b><small>أيام ورا بعض</small></div><div><b>${arN(st.stars)}</b><small>نجوم</small></div><div><b>${arN(st.units)}</b><small>أجزاء</small></div></div>
+  $app.innerHTML = `<div class="screen acctl"><div class="wrap scr"><div class="ahero"><svg class="hscene"><use href="#night"/></svg><div class="aowl">${FLY.replace('howl fly float', 'cowl')}</div><div class="aprof2">${avatar(S.me)}<div class="anm"><b>${esc(S.me.name)}</b><span class="idbox sm">${esc(S.me.wanasId)}</span></div></div></div>
+    <div class="hbody"><div class="astats"><div><b>${arN(st.streak)}</b><small>أيام ورا بعض</small></div><div><b>${arN(st.stars)}</b><small>نجوم</small></div><div><b>${arN(st.units)}</b><small>أجزاء</small></div></div>
     <button class="lrow" id="a1">${I('user')}<span>بياناتي والأمان</span>${I('chev', 'cv')}</button>
     <button class="lrow" id="a2">${I('bell')}<span>الإشعارات</span><em id="a2s">${S.pushOn ? 'شغّالة' : 'مقفولة'}</em></button>
     ${S.isTeacher ? `<button class="lrow" id="a3">${I('plus')}<span>مادة جديدة في منصتي</span>${I('chev', 'cv')}</button>` : `<button class="lrow" id="a3">${I('cap')}<span>افتح منصتي كمعلّم</span>${I('chev', 'cv')}</button>`}
@@ -402,10 +401,11 @@ async function renderQuran() {
   if (!plat) S.tab = 'lib';
   const lib = !plat;
   $app.innerHTML = `<div class="screen">${lib
-    ? `<div class="hero lib"><svg class="hscene"><use href="#night"/></svg><div class="hrow"><div class="hnm"><b style="font-size:24px">المكتبة</b></div>${statChips(qpStats())}</div><div class="lseg" id="lseg"></div></div>`
+    ? `<div class="hero lib"><svg class="hscene"><use href="#night"/></svg><div class="hrow"><button class="ib" id="lback" aria-label="رجوع">${I('back')}</button><div class="hnm"><b style="font-size:24px">الدروس</b></div>${statChips(qpStats())}</div><div class="lseg" id="lseg"></div></div>`
     : `<div class="top plt"><button class="ib" id="qback">${I('back')}</button><h2 id="ptl">المنصة<small id="pts"></small></h2><button class="ib hidden" id="padd">${I('plus')}</button></div>`}
     <div id="qsubs"></div><div id="qtabs"></div><div class="wrap scr" id="qbody"><div class="sk"><i></i><i></i><i></i></div></div>${tabbar()}</div>`;
   bindTabs();
+  if (!plat) document.getElementById('lback').onclick = () => { S.tab = 'home'; S.cur = null; render(); };
   if (plat) document.getElementById('qback').onclick = () => { S.tab = 'home'; S.sub = null; render(); };
   try {
     await loadSurahs();
@@ -433,7 +433,7 @@ function openSubject() {
   if (tb) { tb.innerHTML = sub && sub.teacher_id !== S.me.id ? '<div class="lvw"><button class="btn sec" id="lvp">خروج من المنصة</button></div>' : ''; const lv = tb.querySelector('#lvp'); if (lv) lv.onclick = async () => { if (!confirm('تخرج من منصة ' + (sub.teacher_name || '') + '؟ المعلم يقدر يضيفك تاني.')) return; const { error } = await sb.rpc('leave_subject', { p_subject: sub.id }); if (error) { toast('مقدرتش أخرج، جرّب تاني'); return; } S.sub = null; S.tab = 'home'; render(); }; }
   return openSubject0();
 }
-const LT = [['practice', 'تدريب'], ['story', 'قصص'], ['seerah', 'سيرة']];
+const LT = [['practice', 'تدريب'], ['mushaf', 'المصحف'], ['story', 'قصص'], ['seerah', 'سيرة']];
 function openLibrary(tb, box) {
   if (S.ltop !== 'english') S.ltop = 'quran';
   if (!LT.some(([k]) => k === S.ltab)) S.ltab = 'practice';
@@ -445,6 +445,7 @@ function openLibrary(tb, box) {
   tb.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { S.ltab = b.dataset.k; openSubject(); }));
   if (S.ltop === 'english') { box.innerHTML = `<div class="pad">${grammarCard()}</div>`; bindGrammar(box); return; }
   if (S.ltab === 'practice') { box.innerHTML = `<div class="pad">${qpTop()}${qpCard()}</div>`; box.querySelector('#qpopen').onclick = openQPractice; qpTopBind(box, openSubject); return; }
+  if (S.ltab === 'mushaf') return mushafList(box);
   chapterList(null, S.ltab);
 }
 async function chapterList(sub, kind) {
@@ -453,6 +454,7 @@ async function chapterList(sub, kind) {
   const { data, error } = sub ? await sb.from('sj_lessons').select('id,level,title,body,position').eq('subject_id', sub.id).eq('kind', kind).limit(1000).order('level').order('position').order('id') : await sb.rpc('library_lessons', { p_kind: kind });
   if (error) { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
   if (!data.length) { box.innerHTML = '<div class="empty">لسه مفيش محتوى هنا</div>'; return; }
+  if (!sub) { try { const r = await fetch('more.json?v=' + BUILD); if (r.ok) (await r.json()).filter((x) => x.kind === kind).forEach((x) => data.push({ id: x.id, level: x.level, title: x.title, body: x.body, position: null })); } catch {} }
   data.forEach((x) => (x.kind = kind));
   const groups = []; for (const l of data) { let g = groups[groups.length - 1]; if (!g || g.name !== l.level) groups.push(g = { name: l.level || '', rows: [] }); g.rows.push(l); }
   const wc = (g) => arN(g.rows.reduce((n, x) => n + (x.body || '').split(/\s+/).length, 0));
@@ -628,6 +630,51 @@ const GR = [
       { q: 'I ___ swim very well.', o: ['can', 'cans', 'am can'], a: 0, w: 'can ثابتة بدون s.' },
       { q: 'You ___ cross the road when it is red. (ممنوع)', o: ['must', 'mustn\'t', 'should'], a: 1, w: 'ممنوع: mustn\'t.' },
     ] },
+  { id: 'a2-past', lv: 'A2', ic: '⏪', t: 'الماضي البسيط (Past simple)',
+    cards: [
+      { h: 'الأفعال العادية', p: 'نضيف ed للفعل علشان نتكلم عن حاجة حصلت وخلصت.\n• play ← played\n• walk ← walked\n• لو الفعل بينتهي بـ e نضيف d بس: like ← liked', ex: [['I played football yesterday.', 'لعبت كورة امبارح.'], ['She liked the story.', 'عجبتها القصة.']] },
+      { h: 'الأفعال الشاذة', p: 'في أفعال بتتغير بشكل خاص ولازم نحفظها.\n• go ← went\n• eat ← ate\n• see ← saw\n• have ← had\nوفي السؤال والنفي بنستخدم did والفعل يرجع زي الأصل.', ex: [['We went to school.', 'رحنا المدرسة.'], ['Did you eat breakfast?', 'فطرت؟'], ['I did not see him.', 'ماشفتوش.']] },
+    ],
+    q: [
+      { q: 'Yesterday I ___ to the park.', o: ['go', 'went', 'goes'], a: 1, w: 'go فعل شاذ، الماضي بتاعه went.' },
+      { q: 'She ___ her homework last night.', o: ['finished', 'finish', 'finishes'], a: 0, w: 'الحدث خلص في الماضي، نضيف ed.' },
+      { q: 'Did you ___ the movie?', o: ['liked', 'like', 'likes'], a: 1, w: 'بعد did الفعل يرجع للأصل.' },
+      { q: 'He ___ not eat the cake.', o: ['do', 'does', 'did'], a: 2, w: 'للنفي في الماضي نستخدم did not.' },
+      { q: 'We ___ a nice film yesterday.', o: ['see', 'saw', 'seen'], a: 1, w: 'see فعل شاذ، الماضي saw.' },
+    ] },
+  { id: 'a2-future', lv: 'A2', ic: '🚀', t: 'المستقبل (will / going to)',
+    cards: [
+      { h: 'will', p: 'نستخدم will لقرار بنقرره دلوقتي أو لتوقع.\nالشكل: will + الفعل (من غير to).', ex: [['I will help you.', 'هساعدك.'], ['It will rain tomorrow.', 'هتمطر بكرة.']] },
+      { h: 'going to', p: 'نستخدم be going to لخطة قررناها قبل كده.\nالشكل: am / is / are + going to + الفعل.', ex: [['I am going to visit my aunt.', 'هزور عمتي (ناوي).'], ['They are going to play tonight.', 'هيلعبوا الليلة.']] },
+    ],
+    q: [
+      { q: 'I ___ call you later. (decision now)', o: ['will', 'am going', 'did'], a: 0, w: 'قرار لحظي، نستخدم will.' },
+      { q: 'She is going ___ study tonight.', o: ['to', 'will', 'for'], a: 0, w: 'الشكل: going to + الفعل.' },
+      { q: 'Look at the clouds. It ___ rain.', o: ['is going to', 'did', 'was'], a: 0, w: 'في دليل قدامنا (السحب)، نستخدم going to.' },
+      { q: 'He will ___ here tomorrow.', o: ['be', 'is', 'been'], a: 0, w: 'بعد will بنستخدم الفعل الأصلي be.' },
+    ] },
+  { id: 'a2-compare', lv: 'A2', ic: '📏', t: 'المقارنة (bigger / the biggest)',
+    cards: [
+      { h: 'المقارنة بين اتنين', p: 'الكلمة القصيرة نضيف لها er ونكتب than.\n• tall ← taller than\n• big ← bigger than\nالكلمة الطويلة نكتب more قبلها: more beautiful than.', ex: [['My bag is bigger than yours.', 'شنطتي أكبر من شنطتك.'], ['This book is more interesting than that one.', 'الكتاب ده أمتع من ده.']] },
+      { h: 'الأكتر والأقل', p: 'للأعلى بين تلاتة أو أكتر نستخدم the + est أو the most.\n• tall ← the tallest\n• beautiful ← the most beautiful\nشواذ: good ← better ← the best، bad ← worse ← the worst.', ex: [['He is the tallest in the class.', 'هو الأطول في الفصل.'], ['This is the best day.', 'ده أحسن يوم.']] },
+    ],
+    q: [
+      { q: 'A car is ___ than a bike.', o: ['fast', 'faster', 'fastest'], a: 1, w: 'مقارنة بين اتنين مع than، نستخدم faster.' },
+      { q: 'She is the ___ girl in the class.', o: ['smart', 'smarter', 'smartest'], a: 2, w: 'الأعلى بين مجموعة، نستخدم the smartest.' },
+      { q: 'This story is ___ interesting than that one.', o: ['more', 'most', 'much'], a: 0, w: 'كلمة طويلة، نستخدم more.' },
+      { q: 'good ← better ← ___', o: ['goodest', 'the best', 'the most good'], a: 1, w: 'good من الشواذ، the best.' },
+    ] },
+  { id: 'a2-freq', lv: 'A2', ic: '🔁', t: 'كلمات التكرار (always, never...)',
+    cards: [
+      { h: 'كام مرة؟', p: 'الكلمات دي بتقول الحاجة بتحصل كتير ولا قليل:\nalways (دايمًا) · usually (غالبًا) · often (كتير) · sometimes (أحيانًا) · never (أبدًا).\nمكانها قبل الفعل العادي.', ex: [['I always brush my teeth.', 'دايمًا بغسل سناني.'], ['He never eats fish.', 'هو مابياكلش سمك أبدًا.']] },
+      { h: 'مع am / is / are', p: 'مع فعل be المكان بعده.\nShe is always happy.\nنستخدم never من غير not لأن معناها فيه نفي.', ex: [['They are often late.', 'هم كتير بيتأخروا.'], ['I am never sad here.', 'عمري ما بزعل هنا.']] },
+    ],
+    q: [
+      { q: 'I ___ drink tea in the morning. (every day)', o: ['always', 'never', 'sometimes'], a: 0, w: 'every day معناها دايمًا = always.' },
+      { q: 'She is ___ late. (not ever)', o: ['never', 'always', 'usually'], a: 0, w: 'not ever معناها never.' },
+      { q: 'He ___ plays football. (a few times)', o: ['sometimes', 'always', 'never'], a: 0, w: 'a few times معناها أحيانًا = sometimes.' },
+      { q: 'We ___ go to school by bus.', o: ['often', 'be', 'to'], a: 0, w: 'often كلمة تكرار، مكانها قبل الفعل.' },
+    ] },
   { id: 'b1-perfect', lv: 'B1', ic: '🕘', t: 'Present perfect و Past simple',
     cards: [
       { h: 'Past simple', p: 'لحاجة حصلت ووقتها معروف وانتهى.\nكلمات: yesterday, last year, in 2020', ex: [['I visited Alexandria last year.', 'زرت إسكندرية السنة اللي فاتت.']] },
@@ -677,13 +724,90 @@ const GR = [
       { q: 'He stayed home ___ he was sick.', o: ['so', 'because', 'however'], a: 1, w: 'سبب: because.' },
       { q: '___ it was cold, we went out.', o: ['Because', 'So', 'Although'], a: 2, w: 'تناقض: Although.' },
     ] },
+  { id: 'b1-pastcont', lv: 'B1', ic: '🌧️', t: 'الماضي المستمر (was / were + ing)',
+    cards: [
+      { h: 'الشكل والاستخدام', p: 'بنتكلم عن حاجة كانت شغالة في وقت معين في الماضي.\nالشكل: was / were + الفعل + ing.\n• I / he / she / it ← was\n• you / we / they ← were', ex: [['I was reading at 8 pm.', 'كنت بقرا الساعة ٨.'], ['They were playing outside.', 'كانوا بيلعبوا بره.']] },
+      { h: 'مع الماضي البسيط', p: 'الحدث الطويل بـ was / were + ing. والحدث القصير اللي قاطعه بالماضي البسيط، وبنربطهم بـ when أو while.', ex: [['I was sleeping when you called.', 'كنت نايم لما اتصلت.'], ['While she was cooking, he came.', 'وهي بتطبخ، هو جه.']] },
+    ],
+    q: [
+      { q: 'At 7 o\'clock I ___ dinner.', o: ['was eating', 'ate', 'eat'], a: 0, w: 'حاجة كانت شغالة وقت معين، was eating.' },
+      { q: 'They ___ playing when it rained.', o: ['was', 'were', 'are'], a: 1, w: 'They مع were.' },
+      { q: 'I was walking ___ I saw my friend.', o: ['when', 'but', 'so'], a: 0, w: 'when بتربط الحدث القصير بالطويل.' },
+      { q: 'She ___ watching TV at that time.', o: ['was', 'were', 'did'], a: 0, w: 'She مع was.' },
+    ] },
+  { id: 'b1-cond1', lv: 'B1', ic: '🌦️', t: 'لو (First conditional)',
+    cards: [
+      { h: 'لو + مضارع، will + فعل', p: 'نتكلم عن حاجة ممكن تحصل في المستقبل.\nالشكل: If + المضارع البسيط، will + الفعل.', ex: [['If it rains, we will stay home.', 'لو مطرت، هنفضل في البيت.'], ['If you study, you will pass.', 'لو ذاكرت، هتنجح.']] },
+      { h: 'تنبيه', p: 'بعد if ما نكتبش will. نكتب المضارع البسيط.\nصح: If I see him, I will tell him.\nغلط: If I will see him...', ex: [['If he comes, I will be happy.', 'لو جه، هبقى مبسوط.']] },
+    ],
+    q: [
+      { q: 'If it ___ tomorrow, we will go out.', o: ['is sunny', 'will be sunny', 'was sunny'], a: 0, w: 'بعد if نستخدم المضارع البسيط.' },
+      { q: 'If you work hard, you ___ succeed.', o: ['will', 'would', 'did'], a: 0, w: 'الجزء التاني بـ will + فعل.' },
+      { q: 'If she ___ me, I will help her.', o: ['asks', 'will ask', 'asked'], a: 0, w: 'بعد if مضارع بسيط، asks.' },
+      { q: 'We will be late if we ___ now.', o: ['don\'t leave', 'won\'t leave', 'didn\'t leave'], a: 0, w: 'بعد if مضارع بسيط، don\'t leave.' },
+    ] },
+  { id: 'b1-cond2', lv: 'B1+', ic: '💭', t: 'لو (Second conditional)',
+    cards: [
+      { h: 'حاجة خيالية', p: 'نتكلم عن حاجة مش حقيقية دلوقتي أو صعب تحصل.\nالشكل: If + الماضي البسيط، would + الفعل.', ex: [['If I had a car, I would drive to school.', 'لو كان عندي عربية، كنت سوقت للمدرسة.'], ['If I were a bird, I would fly.', 'لو كنت طير، كنت طرت.']] },
+      { h: 'were مع الجميع', p: 'في الكلام الخيالي نستخدم were مع كل الضمائر، حتى I و he و she.\nIf I were you, I would study more. (لو كنت مكانك...)', ex: [['If he were here, he would help us.', 'لو كان هنا، كان ساعدنا.']] },
+    ],
+    q: [
+      { q: 'If I ___ rich, I would travel the world.', o: ['were', 'am', 'will be'], a: 0, w: 'حاجة خيالية، نستخدم were.' },
+      { q: 'If she had time, she ___ visit us.', o: ['would', 'will', 'did'], a: 0, w: 'الجزء التاني بـ would + فعل.' },
+      { q: 'If I ___ you, I would say sorry.', o: ['am', 'were', 'be'], a: 1, w: 'If I were you عبارة ثابتة.' },
+      { q: 'What would you do if you ___ a million pounds?', o: ['have', 'had', 'will have'], a: 1, w: 'بعد if في الخيال نستخدم الماضي البسيط had.' },
+    ] },
+  { id: 'b1-gerund', lv: 'B1', ic: '🎯', t: 'الفعل + ing أو to',
+    cards: [
+      { h: 'أفعال بعدها ing', p: 'بعد الأفعال دي نضيف ing للفعل اللي بعدها:\nenjoy · finish · mind · stop · keep.', ex: [['I enjoy reading.', 'بستمتع بالقراءة.'], ['She finished doing her homework.', 'خلصت واجبها.']] },
+      { h: 'أفعال بعدها to', p: 'بعد الأفعال دي نكتب to + الفعل:\nwant · need · hope · decide · plan · learn.', ex: [['I want to play.', 'عايز ألعب.'], ['He decided to study.', 'قرر يذاكر.']] },
+    ],
+    q: [
+      { q: 'I enjoy ___ football.', o: ['playing', 'to play', 'play'], a: 0, w: 'بعد enjoy نستخدم ing.' },
+      { q: 'She wants ___ a doctor.', o: ['being', 'to be', 'be'], a: 1, w: 'بعد want نستخدم to.' },
+      { q: 'He finished ___ his room.', o: ['to clean', 'cleaning', 'clean'], a: 1, w: 'بعد finish نستخدم ing.' },
+      { q: 'We decided ___ early.', o: ['leaving', 'to leave', 'leave'], a: 1, w: 'بعد decide نستخدم to.' },
+    ] },
+  { id: 'b1-usedto', lv: 'B1', ic: '🕰️', t: 'كنت بـ (used to)',
+    cards: [
+      { h: 'عادة قديمة', p: 'نستخدم used to + الفعل لحاجة كنا بنعملها زمان ومبقيناش نعملها.', ex: [['I used to play with toys.', 'كنت بلعب بالعب زمان.'], ['She used to live in Cairo.', 'كانت بتسكن في القاهرة.']] },
+      { h: 'السؤال والنفي', p: 'في السؤال والنفي نستخدم did و use to (من غير d).\nDid you use to swim?\nI didn\'t use to like fish.', ex: [['He didn\'t use to wake up early.', 'ماكانش بيصحى بدري.']] },
+    ],
+    q: [
+      { q: 'I ___ ride a bike when I was six.', o: ['used to', 'use to', 'using to'], a: 0, w: 'في الإثبات نكتب used to.' },
+      { q: 'Did you ___ play chess?', o: ['used to', 'use to', 'using'], a: 1, w: 'بعد did نكتب use to من غير d.' },
+      { q: 'She ___ to live near the sea.', o: ['used', 'use', 'uses'], a: 0, w: 'الشكل used to.' },
+      { q: 'We didn\'t ___ to like vegetables.', o: ['used', 'use', 'using'], a: 1, w: 'بعد didn\'t نكتب use to.' },
+    ] },
+  { id: 'b1-tags', lv: 'B1', ic: '❓', t: 'سؤال الذيل (Question tags)',
+    cards: [
+      { h: 'نؤكد الكلام', p: 'بنضيف سؤال قصير في الآخر علشان نتأكد.\n• جملة مثبتة ← الذيل منفي: You are happy, aren\'t you?\n• جملة منفية ← الذيل مثبت: He isn\'t here, is he?', ex: [['It is cold, isn\'t it?', 'الجو برد، مش كده؟'], ['You can swim, can\'t you?', 'بتعرف تعوم، مش كده؟']] },
+      { h: 'نفس الفعل المساعد', p: 'الذيل بيستخدم نفس الفعل المساعد (is, can, do...). لو مفيش فعل مساعد نستخدم do أو does أو did.', ex: [['She likes tea, doesn\'t she?', 'بتحب الشاي، مش كده؟'], ['They went, didn\'t they?', 'راحوا، مش كده؟']] },
+    ],
+    q: [
+      { q: 'You are tired, ___?', o: ['aren\'t you', 'are you', 'don\'t you'], a: 0, w: 'جملة مثبتة، الذيل منفي.' },
+      { q: 'He doesn\'t like fish, ___?', o: ['doesn\'t he', 'does he', 'is he'], a: 1, w: 'جملة منفية، الذيل مثبت.' },
+      { q: 'They play football, ___?', o: ['don\'t they', 'aren\'t they', 'do they'], a: 0, w: 'play مضارع، الذيل don\'t they.' },
+      { q: 'She can sing, ___?', o: ['can\'t she', 'doesn\'t she', 'isn\'t she'], a: 0, w: 'الفعل المساعد can، الذيل can\'t she.' },
+    ] },
+  { id: 'b1-phrasal', lv: 'B1+', ic: '🧩', t: 'أفعال مركبة (Phrasal verbs)',
+    cards: [
+      { h: 'فعل + كلمة صغيرة', p: 'لما نضيف كلمة صغيرة (up, down, on, off, out) للفعل بيتغير المعنى.\n• get up = تصحى\n• turn on = تشغّل\n• turn off = تطفّي\n• look for = تدوّر على', ex: [['I get up at six.', 'بصحى الساعة ٦.'], ['Please turn off the light.', 'لو سمحت طفّي النور.']] },
+      { h: 'كمان أفعال مفيدة', p: '• give up = تستسلم\n• come back = ترجع\n• put on = تلبس\n• take off = تخلع\n• look after = تهتم بـ', ex: [['Don\'t give up!', 'ماتستسلمش!'], ['She looks after her little brother.', 'بتهتم بأخوها الصغير.']] },
+    ],
+    q: [
+      { q: 'Please ___ the TV. It is too loud.', o: ['turn off', 'turn in', 'turn at'], a: 0, w: 'turn off يعني تطفّي.' },
+      { q: 'I am ___ my keys. I can\'t find them.', o: ['looking for', 'looking at', 'looking after'], a: 0, w: 'look for يعني بدوّر على.' },
+      { q: 'It is cold. ___ your jacket.', o: ['Put on', 'Take off', 'Give up'], a: 0, w: 'put on يعني تلبس.' },
+      { q: 'Never ___ up your dreams.', o: ['give', 'take', 'put'], a: 0, w: 'give up يعني تستسلم.' },
+    ] },
 ];
 
 const isEng = (sub) => sub && sub.kind === 'generic' && /انجليزي|إنجليزي|english/i.test(sub.name || '');
 const gpKey = () => 'gp_' + ((S.me && S.me.id) || 'x');
 const gpGet = () => { try { return JSON.parse(localStorage.getItem(gpKey()) || '{}'); } catch { return {}; } };
-function grammarCard() { return `<div class="gcard bl" id="gopen"><span class="gico">${I('gram')}</span><div style="flex:1"><div style="font-weight:900;font-size:18px">قواعد الإنجليزي</div><div style="font-size:13px;opacity:.9">${arN(GR.length)} درس قصير · قاعدة وتمارين</div></div>${I('chev')}</div>`; }
-function bindGrammar(root) { const b = root.querySelector('#gopen'); if (b) b.onclick = openGrammar; }
+function grammarCard() { return `<div class="gcard bl" id="gopen"><span class="gico">${I('gram')}</span><div style="flex:1"><div style="font-weight:900;font-size:18px">قواعد الإنجليزي</div><div style="font-size:13px;opacity:.9">${arN(GR.length)} درس قصير · قاعدة وتمارين</div></div>${I('chev')}</div><div class="gcard dk" id="dopen"><span class="gico">${I('gram')}</span><div style="flex:1"><div style="font-weight:900;font-size:18px">قاموس إنجليزي ← عربي</div><div style="font-size:13px;opacity:.9">ابحث عن أي كلمة وسمع نطقها</div></div>${I('chev')}</div>`; }
+function bindGrammar(root) { const b = root.querySelector('#gopen'); if (b) b.onclick = openGrammar; const d = root.querySelector('#dopen'); if (d) d.onclick = openDict; }
 function openGrammar() {
   const s = sheet('<div></div>'); s.classList.add('full', 'eng');
   const draw = () => {
@@ -917,9 +1041,57 @@ async function openQPractice(startNum) {
   const run = (i) => { const x = L[i]; qpUnitFlow(x.num, x.a, x.b, X.s[x.num], draw, i < L.length - 1 ? () => run(i + 1) : null); };
   draw();
 }
+// ---------- build 32: المصحف كامل (114 سورة) ----------
+const MQ_IDX = {"1": 1, "2": 1, "3": 1, "4": 2, "5": 2, "6": 2, "7": 3, "8": 3, "9": 3, "10": 3, "11": 3, "12": 4, "13": 4, "14": 4, "15": 4, "16": 4, "17": 4, "18": 4, "19": 4, "20": 4, "21": 5, "22": 5, "23": 5, "24": 5, "25": 5, "26": 5, "27": 5, "28": 5, "29": 5, "30": 5, "31": 6, "32": 6, "33": 6, "34": 6, "35": 6, "36": 6, "37": 6, "38": 6, "39": 6, "40": 6, "41": 6, "42": 6, "43": 6, "44": 6, "45": 7, "46": 7, "47": 7, "48": 7, "49": 7, "50": 7, "51": 7, "52": 7, "53": 7, "54": 7, "55": 7, "56": 7, "57": 7, "58": 7, "59": 7, "60": 7, "61": 7, "62": 7, "63": 7, "64": 7, "65": 7, "66": 7, "67": 7, "68": 7, "69": 7, "70": 7, "71": 7, "72": 7, "73": 7, "74": 7, "75": 7, "76": 7, "77": 7, "78": 8, "79": 8, "80": 8, "81": 8, "82": 8, "83": 8, "84": 8, "85": 8, "86": 8, "87": 8, "88": 8, "89": 8, "90": 8, "91": 8, "92": 8, "93": 8, "94": 8, "95": 8, "96": 8, "97": 8, "98": 8, "99": 8, "100": 8, "101": 8, "102": 8, "103": 8, "104": 8, "105": 8, "106": 8, "107": 8, "108": 8, "109": 8, "110": 8, "111": 8, "112": 8, "113": 8, "114": 8};
+const MQ = {};
+async function loadMq(num) {
+  const f = MQ_IDX[num]; if (!f) throw new Error('mq');
+  if (!MQ[f]) { const r = await fetch('mq' + f + '.json?v=' + BUILD); if (!r.ok) throw new Error('mq'); MQ[f] = await r.json(); }
+  return MQ[f];
+}
+async function mushafList(box) {
+  box.innerHTML = '<div class="sk"><i></i><i></i><i></i></div>';
+  try { await loadSurahs(); } catch { box.innerHTML = '<div class="empty">مقدرتش أحمّل البيانات، جرّب تاني</div>'; return; }
+  const rows = S.qs.map((x) => `<button class="mrow" data-n="${x.num}"><span class="medl"><svg><use href="#medal"/></svg><b>${arN(x.num)}</b></span><span class="mnm">${esc(x.name_ar)}</span><small>${arN(x.ayahs)} آية</small></button>`).join('');
+  box.innerHTML = `<div class="pad"><div class="mhd"><b>المصحف الشريف</b><small>${arN(S.qs.length)} سورة</small></div><div class="mlist">${rows}</div><div class="mcr">نص القرآن: <a href="https://tanzil.net" target="_blank" rel="noopener">مشروع تنزيل (tanzil.net)</a> · رخصة CC BY 3.0 · النص الأصلي بدون أي تعديل</div></div>`;
+  box.querySelectorAll('.mrow').forEach((b) => (b.onclick = async () => {
+    const n = +b.dataset.n; b.classList.add('ld');
+    try { const X = await loadMq(n); openQReader(n, { s: X.s }, true); } catch { toast('مقدرتش أفتح السورة، جرّب تاني'); }
+    b.classList.remove('ld');
+  }));
+}
+
+// ---------- build 32: القاموس (FreeDict eng-ara، GPL v2+) ----------
+const DK_IDX = ["a", "aureoles", "carpeting", "cryptic", "ega", "freewheels", "image-type", "lick", "muzzling", "pheasants", "recidivist", "separator", "submittal", "ultrared", "villager"];
+const DK = {};
+async function dkShard(w) {
+  let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= w) f = i;
+  if (!DK[f]) { const r = await fetch('dict' + (f + 1) + '.json?v=' + BUILD); if (!r.ok) throw new Error('dk'); DK[f] = await r.json(); }
+  return DK[f];
+}
+function dkSpeak(w) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(w); u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u); } catch {} }
+function openDict() {
+  const s = sheet('<div></div>'); s.classList.add('full', 'eng', 'dict');
+  s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl">${I('x')}</button><h3>القاموس</h3><span></span></div><div class="qpscroll"><div class="dkbox"><input id="dq" dir="ltr" placeholder="اكتب كلمة بالإنجليزي…" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div id="dres" class="dkres"><div class="empty">اكتب كلمة وهتظهر معناها بالعربي</div></div><div class="mcr">القاموس من مشروع <a href="https://freedict.org/" target="_blank" rel="noopener">FreeDict</a> (English-Arabic، مصدره Arabeyes.org) بترخيص <a href="https://www.gnu.org/licenses/gpl-2.0.html" target="_blank" rel="noopener">GNU GPL v2 أو أحدث</a>. بيانات القاموس منشورة كما هي في <a href="https://download.freedict.org/dictionaries/eng-ara/" target="_blank" rel="noopener">freedict.org</a>.</div></div>`;
+  s.querySelector('#cl').onclick = () => { try { speechSynthesis.cancel(); } catch {} s.remove(); };
+  const q = s.querySelector('#dq'), res = s.querySelector('#dres'); let tk = 0;
+  q.oninput = async () => {
+    const w = q.value.trim().toLowerCase(), my = ++tk;
+    if (!w) { res.innerHTML = '<div class="empty">اكتب كلمة وهتظهر معناها بالعربي</div>'; return; }
+    if (!/^[a-z][a-z'\-]*$/.test(w)) { res.innerHTML = '<div class="empty">اكتب بحروف إنجليزي بس</div>'; return; }
+    let D; try { D = await dkShard(w); } catch { if (my === tk) res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
+    if (my !== tk) return;
+    const keys = Object.keys(D); const hit = D[w] ? [w] : []; const more = keys.filter((k) => k !== w && k.startsWith(w)).slice(0, 25 - hit.length);
+    const all = hit.concat(more);
+    if (!all.length) { res.innerHTML = '<div class="empty">مفيش الكلمة دي في القاموس</div>'; return; }
+    res.innerHTML = all.map((k) => `<div class="dkr"><button class="dks" data-w="${esc(k)}" aria-label="نطق">${I('play', 'fillw')}</button><div class="dkw" dir="ltr">${esc(k)}</div><div class="dkm">${esc(D[k])}</div></div>`).join('');
+    res.querySelectorAll('.dks').forEach((b) => (b.onclick = () => dkSpeak(b.dataset.w)));
+  };
+  setTimeout(() => q.focus(), 120);
+}
 // ---------- build 30: صفحة القراءة (شكل صفحة المصحف) ----------
 const BSM = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
-function openQReader(num, X) {
+function openQReader(num, X, mush) {
   const s = sheet('<div></div>'); s.classList.add('full', 'qread'); const tx = X.s[num], au = new Audio(); au.preload = 'auto'; let cur = 0, on = false;
   const body = tx.map((t, i) => { let a = t; if (i === 0 && num !== 1 && a.startsWith(BSM)) a = a.slice(BSM.length).trim(); return `<span class="ay" data-a="${i + 1}">${esc(a)} <span class="rs"><b>${arN(i + 1)}</b></span></span> `; }).join('');
   s.querySelector('.in').innerHTML = `<div class="qrh"><button class="rdb xb" id="cl">${I('x')}</button><div class="qrk">${arN(tx.length)} آية</div><div class="qrt">${esc(qpNm(num))}</div>${num !== 1 && num !== 9 ? `<div class="qrb">${BSM}</div>` : ''}</div><div class="qrbody"><div class="qrtext">${body}</div><div class="qrsp"></div></div><div class="qrbar"><button class="qrp" id="pl">${I('play', 'fillw')}</button><div class="qrw"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><button class="qrm" id="tr">تدريب</button></div>`;
@@ -930,7 +1102,7 @@ function openQReader(num, X) {
   pl.onclick = () => (on ? stop() : play(cur || 1));
   spans.forEach((x) => (x.onclick = () => play(+x.dataset.a)));
   s.querySelector('#cl').onclick = () => { stop(); s.remove(); };
-  s.querySelector('#tr').onclick = () => { stop(); s.remove(); };
+  { const tr = s.querySelector('#tr'); if (!QP_ORDER.includes(num)) tr.remove(); else tr.onclick = () => { stop(); s.remove(); if (mush) openQPractice(num); }; }
 }
 function qpCard() { return `<div class="gcard gr" id="qpopen"><span class="gico">${I('moon')}</span><div style="flex:1"><div style="font-weight:900;font-size:18px">تدريب الحفظ</div><div style="font-size:13px;opacity:.9">استمع، ردّد، وجاوب أسئلة قصيرة · الفاتحة وجزء عمّ</div></div>${I('chev')}</div>`; }
 // ---------- build 28 extras: streak, badges, revision, homework ----------
@@ -1254,21 +1426,23 @@ function renderListIf() { if (!S.cur && S.me && S.tab === 'chat') renderList(); 
 function renderList() {
   S.tab = 'chat';
   const rows = S.contacts.map((c) => `
-    <div class="row" data-id="${c.id}">
+    <div class="crow" data-id="${c.id}">
       ${avatar(c, '', true)}
       <div class="mid"><div class="nm">${esc(c.name)}</div><div class="ls">${esc(previewOf(c.last))}</div></div>
       <div class="tm">${c.last ? fmtTime(c.last.created_at) : ''}${c.unread ? `<br><span class="badge">${c.unread}</span>` : ''}</div>
     </div>`).join('');
+  const empty = `<div class="cempty"><div class="cobig">${FLY.replace('howl fly float', 'cowl')}</div><b>لسه معندكش محادثات</b><p>ضيف صاحبك أو معلّمك بالـ ونس ID بتاعه وابدأوا الكلام</p><button class="cgo" id="add2">${I('plus')}<span>ضيف حد</span></button></div>`;
   $app.innerHTML = `
-  <div class="screen">
-    <div class="top"><h2>الدردشة<small id="conn"></small></h2><button class="ib" id="add" title="إضافة جهة اتصال">${I('plus')}</button></div>
+  <div class="screen chatl">
+    <div class="chero"><svg class="hscene"><use href="#night"/></svg><div class="ctr"><div class="ctt"><h2>الدردشة<small id="conn"></small></h2><span>${arN(S.contacts.length)} ${S.contacts.length === 1 ? 'محادثة' : 'محادثات'}</span></div><button class="cadd" id="add" title="إضافة جهة اتصال" aria-label="إضافة">${I('plus')}</button></div></div>
     <div class="wrap scr">
-      <div class="list">${rows || '<div class="empty">لسه معندكش محادثات.<br>دوس على <b>＋</b> وضيف حد بالـ ونس ID بتاعه.</div>'}</div>
+      <div class="clist">${rows || empty}</div>
     </div>${tabbar()}
   </div>`;
   updateConn(); bindTabs();
-  document.querySelectorAll('.row').forEach((r) => (r.onclick = () => openChat(r.dataset.id)));
+  document.querySelectorAll('.crow').forEach((r) => (r.onclick = () => openChat(r.dataset.id)));
   document.getElementById('add').onclick = addSheet;
+  const a2 = document.getElementById('add2'); if (a2) a2.onclick = addSheet;
   pushBanner();
 }
 function updateConn() { const el = document.getElementById('conn'); if (el) el.textContent = S.wsOk ? '' : 'بيتصل…'; const b = document.getElementById('connbar'); if (b) b.classList.toggle('hidden', S.wsOk); }
@@ -1569,7 +1743,7 @@ function renderChat() {
   const c = byId(S.cur);
   $app.innerHTML = `
   <div class="screen">
-    <div class="top"><button class="ib" id="back">${IC('back')}</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="srchb" title="بحث في المحادثة">${IC('search')}</button><button class="ib" id="callb" title="مكالمة صوتية">${IC('phone')}</button><button class="ib" id="wpb" title="خلفية المحادثة">${IC('palette')}</button></div>
+    <div class="chd"><button class="ib" id="back">${IC('back')}</button><div id="hd" style="display:flex;align-items:center;gap:10px;flex:1"></div><button class="ib" id="callb" title="مكالمة صوتية">${IC('phone')}</button><button class="ib" id="morb" title="المزيد" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg></button><button class="ib" id="srchb" title="بحث في المحادثة">${IC('search')}</button><button class="ib" id="wpb" title="خلفية المحادثة">${IC('palette')}</button></div>
     <div class="conn ${S.wsOk ? 'hidden' : ''}" id="connbar">بيتصل بالسيرفر…</div>
     <div class="msgs" id="msgs"></div>
     <div class="bar">
@@ -1583,6 +1757,7 @@ function renderChat() {
   const t = document.getElementById('txt');
   t.oninput = () => { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' };
   t.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !/Mobi|Android/i.test(navigator.userAgent)) { e.preventDefault(); send(); } };
+  document.getElementById('morb').onclick = () => { const m = sheet(`<h3>المزيد</h3><button class="btn sec" id="m1">بحث في المحادثة</button><button class="btn sec" id="m2">خلفية المحادثة</button>`); m.querySelector('#m1').onclick = () => { m.remove(); document.getElementById('srchb').click(); }; m.querySelector('#m2').onclick = () => { m.remove(); document.getElementById('wpb').click(); }; };
   document.getElementById('callb').onclick = () => startCall(S.cur);
   document.getElementById('wpb').onclick = wallpaperSheet;
   document.getElementById('srchb').onclick = () => searchSheet(S.cur);
@@ -2008,6 +2183,8 @@ const NAV = { pushed: 0, wait: false, until: 0 };
 function navLayers() {
   const L = [], q = (s) => document.querySelector(s);
   if (!S.me) { if (window.__authMode && window.__authMode !== 'login') L.push({ k: 'auth', close: () => renderAuth('login') }); return L; }
+  if ((S.tab === 'chat' || S.tab === 'acct') && !S.cur) L.push({ k: 'tab', close: () => { S.tab = 'home'; S.cur = null; render(); } });
+  if (S.tab === 'lib' && !S.cur) L.push({ k: 'lib', close: () => q('#lback')?.click() });
   if (S.tab === 'plat' && !S.cur) L.push({ k: 'platform', close: () => q('#qback')?.click() });
   if (!S.cur && q('#qbody #sback, #qbody #sjb')) L.push({ k: 'detail', close: () => q('#qbody #sback, #qbody #sjb')?.click() });
   if (S.cur) L.push({ k: 'chat', close: () => q('#back')?.click() });
