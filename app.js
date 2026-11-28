@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '28';
+const BUILD = '29';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -296,7 +296,8 @@ const QT = [['tilawa', 'تلاوة'], ['practice', 'تدريب'], ['story', 'ق�
 function openSubject() {
   const sub = curSub(), tb = document.getElementById('qtabs'), box = document.getElementById('qbody'); if (!box) return;
   if (S.sub === 'lib') return openLibrary(tb, box);
-  if (!sub || sub.kind !== 'quran') { if (tb) tb.innerHTML = ''; return openSubject0(); }
+  if (tb) { tb.innerHTML = sub && sub.teacher_id !== S.me.id ? '<div style="padding:8px 14px 0"><button class="btn sec" id="lvp" style="margin:0;padding:8px 14px;font-size:13px;width:auto">خروج من المنصة</button></div>' : ''; const lv = tb.querySelector('#lvp'); if (lv) lv.onclick = async () => { if (!confirm('تخرج من منصة ' + (sub.teacher_name || '') + '؟ المعلم يقدر يضيفك تاني.')) return; const { error } = await sb.rpc('leave_subject', { p_subject: sub.id }); if (error) { toast('مقدرتش أخرج، جرّب تاني'); return; } S.sub = null; renderQuran(); }; }
+  return openSubject0();
   if (S.qtabSub !== sub.id) { S.qtabSub = sub.id; S.qtab = 'tilawa'; }
   tb.innerHTML = `<div style="display:flex;gap:6px;padding:8px 14px 0">${QT.map(([k, n]) => `<button class="qtab" data-k="${k}" style="flex:1;border:0;border-radius:12px;padding:8px 0;font-weight:700;background:${k === S.qtab ? 'var(--v)' : 'var(--chip)'};color:${k === S.qtab ? '#fff' : 'var(--v)'}">${n}</button>`).join('')}</div>`;
   tb.querySelectorAll('.qtab').forEach((b) => (b.onclick = () => { S.qtab = b.dataset.k; openSubject(); }));
@@ -304,13 +305,17 @@ function openSubject() {
   if (S.qtab === 'practice') { box.innerHTML = `<div style="padding:6px 14px 80px">${qpTop()}${qpCard()}<div class="qnote" style="margin:10px 2px">خطوات صغيرة: استمع، ردّد، وجاوب. فيه خيار اختياري إن الجهاز يسمعك ويقارن. المحفوظ الرسمي بيعتمده المعلم.</div></div>`; box.querySelector('#qpopen').onclick = openQPractice; qpTopBind(box, openSubject); return; }
   chapterList(sub, S.qtab);
 }
-const LT = [['practice', 'تدريب'], ['story', 'قصص'], ['seerah', 'سيرة'], ['original', 'النص الأصلي'], ['english', 'إنجليزي']];
+const LT = [['practice', 'تدريب'], ['story', 'قصص'], ['seerah', 'سيرة']];
 function openLibrary(tb, box) {
+  if (S.ltop !== 'english') S.ltop = 'quran';
   if (!LT.some(([k]) => k === S.ltab)) S.ltab = 'practice';
-  tb.innerHTML = `<div style="display:flex;gap:6px;padding:8px 14px 0;overflow-x:auto">${LT.map(([k, n]) => `<button class="qtab" data-k="${k}" style="flex:1;border:0;border-radius:12px;padding:8px 10px;white-space:nowrap;font-weight:700;background:${k === S.ltab ? 'var(--v)' : 'var(--chip)'};color:${k === S.ltab ? '#fff' : 'var(--v)'}">${n}</button>`).join('')}</div>`;
-  tb.querySelectorAll('.qtab').forEach((b) => (b.onclick = () => { S.ltab = b.dataset.k; openSubject(); }));
+  const seg = (k, n, on) => `<button class="qtab" data-top="${k}" style="flex:1;border:0;border-radius:12px;padding:9px 0;font-weight:800;background:${on ? 'var(--v)' : 'var(--chip)'};color:${on ? '#fff' : 'var(--v)'}">${n}</button>`;
+  const sub = S.ltop === 'quran' ? `<div style="display:flex;gap:6px;padding:8px 14px 0">${LT.map(([k, n]) => `<button class="qtab" data-k="${k}" style="flex:1;border:0;border-radius:16px;padding:7px 0;font-weight:700;font-size:14px;background:${k === S.ltab ? 'var(--a)' : 'transparent'};color:${k === S.ltab ? '#1f1537' : 'var(--mu)'}">${n}</button>`).join('')}</div>` : '';
+  tb.innerHTML = `<div style="display:flex;gap:8px;padding:8px 14px 0">${seg('quran', 'القرآن', S.ltop === 'quran')}${seg('english', 'إنجليزي', S.ltop === 'english')}</div>${sub}`;
+  tb.querySelectorAll('[data-top]').forEach((b) => (b.onclick = () => { S.ltop = b.dataset.top; openSubject(); }));
+  tb.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { S.ltab = b.dataset.k; openSubject(); }));
+  if (S.ltop === 'english') { box.innerHTML = `<div style="padding:6px 14px 80px">${grammarCard()}</div>`; bindGrammar(box); return; }
   if (S.ltab === 'practice') { box.innerHTML = `<div style="padding:6px 14px 80px">${qpTop()}${qpCard()}<div class="qnote" style="margin:10px 2px">خطوات صغيرة: استمع، ردّد، وجاوب. فيه خيار اختياري إن الجهاز يسمعك ويقارن. المحفوظ الرسمي بيعتمده المعلم.</div></div>`; box.querySelector('#qpopen').onclick = openQPractice; qpTopBind(box, openSubject); return; }
-  if (S.ltab === 'english') { box.innerHTML = `<div style="padding:6px 14px 80px">${grammarCard()}</div>`; bindGrammar(box); return; }
   chapterList(null, S.ltab);
 }
 async function chapterList(sub, kind) {
@@ -748,25 +753,20 @@ function micPanel(s, num, ids, tx) {
 async function openQPractice() {
   const s = sheet('<div></div>'); s.classList.add('full');
   s.querySelector('.in').innerHTML = '<div class="rdbar"><button class="rdb" id="cl">✕</button></div><div class="sk"><i></i><i></i><i></i></div>'; s.querySelector('#cl').onclick = () => s.remove();
-  let X; try { X = await loadQText(); if (!S.qs) await loadSurahs(); } catch { s.querySelector('.in').innerHTML = '<div class="rdbar"><button class="rdb" id="cl">✕</button></div><div class="empty">مقدرتش أحمّل النص، جرّب تاني</div>'; s.querySelector('#cl').onclick = () => s.remove(); return; }
+  let X; try { X = await loadQText(); if (!S.qs) await loadSurahs(); } catch { s.querySelector('.in').innerHTML = '<div class="rdbar"><button class="rdb" id="cl">✕</button></div><div class="empty">مقدرتش أحمّل التمارين، جرّب تاني</div>'; s.querySelector('#cl').onclick = () => s.remove(); return; }
+  const L = []; QP_ORDER.forEach((num) => qpUnits(X.s[num].length).forEach(([a, b], i, us) => L.push({ num, a, b, last: i === us.length - 1 })));
   const draw = () => {
-    const g = qpGet(); let doneAll = 0, totAll = 0;
-    const rows = QP_ORDER.map((num) => { const n = X.s[num].length, us = qpUnits(n), d = us.filter(([a]) => (g[num + ':' + a] || {}).stars).length; doneAll += d; totAll += us.length; return `<div class="row qsr" data-n="${num}"><div class="gic">${arN(num)}</div><div class="mid"><div class="nm">${esc(qpNm(num))}</div><div class="ls">${arN(n)} آية · ${arN(d)} من ${arN(us.length)} أجزاء</div></div><div style="font-size:20px">${d === us.length ? '⭐' : d ? '✅' : '▶'}</div></div>`; }).join('');
-    s.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl">✕</button><div style="flex:1"></div></div><div class="rdt"><h3>تدريب الحفظ</h3></div>${qpStrip()}<div class="gbar"><i style="width:${Math.round(doneAll / totAll * 100)}%"></i></div><div style="color:var(--mu);font-size:13px;margin:4px 2px 6px">${arN(doneAll)} من ${arN(totAll)} جزء خلصت · الفاتحة وجزء عمّ</div><div class="rdbody">${rows}<div class="qnote" style="margin:14px 2px">التدريب ده مساعد للطالب. المحفوظ الرسمي بيعتمده المعلم في التسميع.<br>نص القرآن: <a href="https://tanzil.net" target="_blank" rel="noopener">مشروع تنزيل (tanzil.net)</a> · الصوت: <a href="https://everyayah.com" target="_blank" rel="noopener">everyayah.com</a><details style="margin-top:6px"><summary>حقوق النص</summary><pre style="white-space:pre-wrap;direction:ltr;text-align:left;font-size:11px">${esc(X.notice)}</pre></details></div></div>`;
+    const g = qpGet(), done = L.filter((x) => (g[x.num + ':' + x.a] || {}).stars).length; let last = 0, h = '';
+    L.forEach((x, i) => {
+      if (x.num !== last) { last = x.num; h += `<div class="glv">${esc(qpNm(x.num))}</div>`; }
+      const p = g[x.num + ':' + x.a];
+      h += `<div class="row grow" data-i="${i}"><div class="gic">${x.num === 1 ? '🌙' : '📖'}</div><div class="mid"><div class="nm">آيات ${arN(x.a)}–${arN(x.b)}</div><div class="ls">${p && p.stars ? `خلّصته · ${'⭐'.repeat(p.stars)}${p.mem ? ' · حفظت' : ''}` : arN(x.b - x.a + 1) + ' آيات · استمع وردّد وجاوب'}</div></div><div style="font-size:20px">${p && p.stars === 3 ? '⭐' : p && p.stars ? '✅' : '▶'}</div></div>`;
+    });
+    s.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl">✕</button><div style="flex:1"></div></div><div class="rdt"><h3>تدريب الحفظ</h3></div>${qpStrip()}<div class="gbar"><i style="width:${Math.round(done / L.length * 100)}%"></i></div><div style="color:var(--mu);font-size:13px;margin:4px 2px 6px">${arN(done)} من ${arN(L.length)} خلصت</div><div class="rdbody">${h}<div class="qnote" style="margin:14px 2px">التدريب ده مساعد للطالب. المحفوظ الرسمي بيعتمده المعلم في التسميع.<br>نص القرآن: <a href="https://tanzil.net" target="_blank" rel="noopener">مشروع تنزيل (tanzil.net)</a> · الصوت: <a href="https://everyayah.com" target="_blank" rel="noopener">everyayah.com</a><details style="margin-top:6px"><summary>حقوق النص</summary><pre style="white-space:pre-wrap;direction:ltr;text-align:left;font-size:11px">${esc(X.notice)}</pre></details></div></div>`;
     s.querySelector('#cl').onclick = () => s.remove();
-    s.querySelectorAll('.qsr').forEach((r) => (r.onclick = () => openSurahUnits(+r.dataset.n, draw)));
+    s.querySelectorAll('.grow').forEach((r) => (r.onclick = () => run(+r.dataset.i)));
   };
-  const openSurahUnits = (num, back) => {
-    const n = X.s[num].length, us = qpUnits(n), t = X.s[num], s2 = sheet('<div></div>'); s2.classList.add('full');
-    const d2 = () => {
-      const g = qpGet();
-      s2.querySelector('.in').innerHTML = `<div class="rdbar"><button class="rdb" id="cl">✕</button><div style="flex:1"></div></div><div class="rdt"><h3>${esc(qpNm(num))}</h3></div><div class="rdbody">${us.map(([a, b], i) => { const p = g[num + ':' + a] || {}; return `<div class="row qur" data-i="${i}"><div class="gic">${arN(i + 1)}</div><div class="mid"><div class="nm">آيات ${arN(a)}–${arN(b)}</div><div class="ls">${p.stars ? '⭐'.repeat(p.stars) + ' · ' + arN(p.best) + '/' + arN(p.total) + (p.mem ? ' · حفظته' : '') : 'لسه'}</div></div><div style="font-size:20px">▶</div></div>`; }).join('')}</div>`;
-      s2.querySelector('#cl').onclick = () => { s2.remove(); back(); };
-      s2.querySelectorAll('.qur').forEach((r) => (r.onclick = () => run(+r.dataset.i)));
-    };
-    const run = (i) => { const [a, b] = us[i]; qpUnitFlow(num, a, b, t, d2, i < us.length - 1 ? () => run(i + 1) : null); };
-    d2();
-  };
+  const run = (i) => { const x = L[i]; qpUnitFlow(x.num, x.a, x.b, X.s[x.num], draw, i < L.length - 1 ? () => run(i + 1) : null); };
   draw();
 }
 function qpCard() { return `<div class="gcard" id="qpopen"><div style="font-size:34px">🕌</div><div style="flex:1"><div style="font-weight:800;font-size:17px">تدريب الحفظ</div><div style="font-size:13px;opacity:.9">استمع، ردّد، وجاوب أسئلة قصيرة · الفاتحة وجزء عمّ</div></div><div style="font-size:22px">‹</div></div>`; }
@@ -839,6 +839,7 @@ function hwNewSheet(students) {
     s.remove(); toast('الواجب اتبعت ✅'); openSubject();
   };
 }
+
 function lessonSheet(l, st, nav) {
   const fs = () => Math.min(36, Math.max(15, +localStorage.getItem('wfs') || 21));
   const s = sheet('<div id="rd"></div>'); s.classList.add('full');
