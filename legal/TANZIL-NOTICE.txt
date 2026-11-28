@@ -1,0 +1,3 @@
+Quran text: Tanzil Project (https://tanzil.net), Uthmani v1.1, CC BY 3.0, unchanged.
+Full copyright block and terms are inside qtext.json and mq1.json..mq8.json (fields "source" and "notice").
+Terms: https://tanzil.net/docs/text_license
