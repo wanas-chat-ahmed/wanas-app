@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '32';
+const BUILD = '33';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
