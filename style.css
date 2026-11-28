@@ -707,3 +707,35 @@ svg.owl{overflow:visible}
 .sheet.full:has(#rd) .in{background:#f6f3fc}
 .qflow .qay,.qflow .gp,.qflow .gq,.qflow .gex{color:#1b1330}.qflow .gopt{color:#1b1330}
 @media(prefers-color-scheme:dark){:root{--bg:#120d20}}
+
+/* build 34: dictionary book + unified dark account sheets */
+.dklet{display:flex;gap:6px;overflow-x:auto;padding:4px 4px 10px;-webkit-overflow-scrolling:touch}.dklet[hidden]{display:none}
+.dklet button{flex:none;min-width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font:800 15px system-ui,sans-serif}.dklet button.on{background:#ffd36b;color:#4a3000;border-color:#ffd36b}
+.dkpg{text-align:center;color:rgba(255,255,255,.75);font-weight:700;font-size:13px;padding:0 4px 8px}.dkpg[hidden]{display:none}
+.dknav{display:flex;gap:10px;padding:12px 4px 4px}.dknav button{flex:1;height:48px;border-radius:16px;border:0;background:#ff7a59;color:#fff;font-weight:900;font-size:16px;box-shadow:0 4px 0 #c9392e}.dknav button:disabled{opacity:.35}
+.sheet.acs .in{background:linear-gradient(180deg,#160e42 0%,#2a1c85 60%,#1a1150 100%);color:#fff;--tx:#fff;--mu:#cfc6f5;--card:rgba(255,255,255,.1);--ln:rgba(255,255,255,.22);--chip:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14)}
+.sheet.acs h3,.sheet.acs p,.sheet.acs small,.sheet.acs label span{color:#fff}.sheet.acs small,.sheet.acs .field span{color:#cfc6f5}
+.sheet.acs .field input,.sheet.acs .field textarea{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.25)}.sheet.acs ::placeholder{color:#a99fe0}
+.sheet.acs .btn{background:linear-gradient(#8f6bff,#5a33c8);color:#fff;box-shadow:0 4px 0 #3b2290}
+.sheet.acs .btn.sec{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.07));border:1px solid rgba(255,255,255,.18);color:#fff;box-shadow:none;border-radius:22px}
+.sheet.acs .btn.sec[style*="c0262d"]{color:#ffb4b8!important;background:rgba(255,80,90,.14);border-color:rgba(255,120,130,.32)}
+.sheet.acs .err{color:#ffb4b8}.sheet.acs .idbox{background:rgba(255,255,255,.14);color:#ffe08a}
+.sheet.acs .row,.sheet.acs .stats>*,.sheet.acs .st,.sheet.acs .sh{color:#fff}
+@media(prefers-color-scheme:dark){.btn.sec{background:rgba(255,255,255,.1);color:#f1ecfb}}
+
+/* build 34: smooth enter/exit + less paint work on phones */
+@keyframes shout{to{opacity:0}}
+@keyframes slidedown{to{transform:translateY(46px);opacity:.4}}
+@keyframes fadeout{to{opacity:0;transform:scale(.985)}}
+@keyframes fadein2{from{opacity:0;transform:scale(.985)}}
+.sheet{animation:fade .2s var(--ease)}
+.sheet.out{animation:shout .19s var(--ease) forwards;pointer-events:none}
+.sheet.out .in{animation:slidedown .19s var(--ease) forwards}
+.sheet.full.out .in{animation:fadeout .19s var(--ease) forwards}
+.sheet.full .in{animation:fadein2 .22s var(--ease)}
+.sheet .in{will-change:transform,opacity}
+html,body{overscroll-behavior:none}
+button,a,.row,.tile,.lrow,.pn{touch-action:manipulation}
+body.ov .screen *,body.ov .screen *::before,body.ov .screen *::after{animation-play-state:paused!important}
+@media (hover:none) and (pointer:coarse){*{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}.sheet{background:rgba(15,8,35,.62)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
