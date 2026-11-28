@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 // ---------- self-update: version.json is fetched uncached; a newer build reloads this one ----------
-const BUILD = '35';
+const BUILD = '36';
 (() => { let tm; document.addEventListener('click', () => { document.body.classList.add('nav'); clearTimeout(tm); tm = setTimeout(() => document.body.classList.remove('nav'), 900); }, true); })();
 const IC = (n) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC.p[n]}</svg>`;
 IC.p = {"cap": "<path d=\"M2 9l10-5 10 5-10 5z\"/><path d=\"M6 11v5c3 2.5 9 2.5 12 0v-5\"/>", "chat": "<path d=\"M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M20 20l-4.2-4.2\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z\"/>", "palette": "<path d=\"M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2.5 1.5-2.5H17a4 4 0 004-4c0-5-4-9.5-9-9.5z\"/><circle cx=\"7.5\" cy=\"11\" r=\".8\"/><circle cx=\"10\" cy=\"7.5\" r=\".8\"/><circle cx=\"14.5\" cy=\"7.5\" r=\".8\"/>", "cam": "<path d=\"M4 8h3l1.5-2h7L17 8h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0014 0M12 18v3\"/>", "send": "<path d=\"M21 3L10 14M21 3l-7 18-4-7-7-4z\"/>", "trash": "<path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "back": "<path d=\"M9 5l7 7-7 7\"/>"};
@@ -34,7 +34,9 @@ const $app = document.getElementById('app');
 const LS = { get: (k) => localStorage.getItem(k), set: (k, v) => localStorage.setItem(k, v), del: (k) => localStorage.removeItem(k) };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ERR = {
-  bad_id: 'الـ ID لازم يكون 3 لـ 20 حرف إنجليزي صغير أو أرقام أو _ أو .',
+  id_short: 'الـ ID قصير. لازم 3 حروف على الأقل (والحد الأقصى 20 حرف)',
+  id_chars: 'الـ ID يكون بحروف إنجليزي صغيرة أو أرقام أو _ أو . بس، من غير مسافات أو حروف عربي',
+  bad_id: 'الـ ID لازم يكون من 3 لحد 20 حرف (مش أكتر من 20): حروف إنجليزي صغيرة أو أرقام أو _ أو . بس',
   bad_name: 'اكتب اسمك', bad_password: 'الباسورد غلط أو أقل من 6 حروف', bad_code: 'الكود غلط أو الـ ID غلط', too_many: 'محاولات كتير، جرّب بعد ساعة', unauthorized: 'لازم تسجّل دخول تاني',
   id_taken: 'الـ ID ده واخده حد، جرّب غيره', bad_login: 'الـ ID أو الباسورد غلط',
   not_found: 'مفيش حد بالـ ID ده', self: 'ده الـ ID بتاعك انت 😄', server: 'في مشكلة في السيرفر، جرّب تاني', net: 'مفيش اتصال، جرّب تاني',
@@ -255,6 +257,7 @@ function renderAuth(mode = 'login') {
     go.disabled = true; err.textContent = 'لحظة… (أول مرة بعد فترة ممكن ياخد حوالي دقيقة لحد ما السيرفر يصحى)';
     try {
       const wid = document.getElementById('wid').value.trim().toLowerCase(), pw = document.getElementById('pw').value;
+      if (mode === 'signup') { if (wid.length < 3) throw new Error('id_short'); if (!/^[a-z0-9_.]+$/.test(wid)) throw new Error('id_chars'); }
       let rcode = null;
       if (mode === 'signup') rcode = (await signupCall({ wanasId: wid, password: pw, name: document.getElementById('name').value })).code;
       const { error } = await sb.auth.signInWithPassword({ email: emailOf(wid), password: pw });
@@ -345,7 +348,7 @@ async function renderHome() {
       <div class="hbub"><b>${msg[0]}</b><small>${msg[1]}</small></div></div>
     <div class="hbody" id="hbody"><div class="sk"><i></i><i></i></div></div></div>${tabbar()}</div>`;
   bindTabs(); document.getElementById('bell').onclick = () => toast('مفيش إشعارات جديدة');
-  { const v = localStorage.getItem('clkv') || '1'; const hc = document.getElementById('hclk'); if (hc) hc.className = 'hclk v' + v;
+  { const v = localStorage.getItem('clkv') || '1'; const hc = document.getElementById('hclk'); if (hc) hc.className = 'hclk v' + v; if (hc) { hc.onclick = openPray; hc.setAttribute('role', 'button'); hc.setAttribute('aria-label', 'مواقيت الصلاة'); }
     const tick = '<g stroke="#f4c15a" stroke-width="2" stroke-linecap="round">' + Array.from({ length: 12 }, (_, i) => `<path d="M50 9v${i % 3 ? 4 : 8}" transform="rotate(${i * 30} 50 50)"/>`).join('') + '</g>';
     const ck = () => { const e = document.getElementById('hclk'); if (!e) return clearInterval(S.clk); const d = new Date(), h = d.getHours(), m = d.getMinutes(), hh = arN(String(((h + 11) % 12) + 1).padStart(2, '0')), mm = arN(String(m).padStart(2, '0')), ap = h < 12 ? 'ص' : 'م';
       if (v === '1') { const sc = d.getSeconds(), dt = d.toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }), hl = arN(String(((h + 11) % 12) + 1)), mn = arN(String(m).padStart(2, '0')); e.innerHTML = `<div class="rp" dir="ltr"><b>${hl}<span class="cc">:</span>${mn}</b></div><div class="rd"><svg class="i" viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${dt}</span></div>`; }
@@ -354,8 +357,8 @@ async function renderHome() {
       else e.innerHTML = `<svg viewBox="0 0 150 90"><defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3c0"/><stop offset="1" stop-color="#f4a621"/></linearGradient></defs><path d="M96 8a38 38 0 1 0 0 74a30 30 0 1 1 0-74z" fill="url(#cg)" transform="translate(14 0)"/><circle cx="140" cy="14" r="2.6" fill="#fff3c0"/><path d="M134 68l1.6 3.6 3.6 1.6-3.6 1.6-1.6 3.6-1.6-3.6-3.6-1.6 3.6-1.6z" fill="#fff3c0"/></svg><div class="cm3"><b dir="ltr">${hh}:${mm}</b><small>${ap}</small></div>`; };
     ck(); clearInterval(S.clk); S.clk = setInterval(ck, v === '1' ? 1000 : 15000); }
   { const sc = document.getElementById('hmb'), sn = sc.querySelector('.hscene'), ow = sc.querySelector('.howl'); sc.onscroll = () => { const y = Math.min(sc.scrollTop, 200); sn.style.transform = `translateY(${y * .35}px)`; ow.style.marginTop = (y * .15) + 'px'; };
-    const SAY = isSleep() ? [['هشش... نايم', 'ارجع بعد الصبح'], ['zzz', 'تصبح على خير']] : [['برافو عليك!', 'كل يوم درس صغير بيفرق'], ['إنت قدّها!', 'كمّل وهتحفظ أسرع'], ['فخور بيك', 'السلسلة مستنياك'], ['يلا بينا!', 'اضغط الزر الذهبي']]; let si = 0;
-    ow.onclick = () => { ow.classList.remove('hop'); void ow.getBoundingClientRect(); ow.classList.add('hop'); const b = sc.querySelector('.hbub'); const m = SAY[si++ % SAY.length]; b.innerHTML = `<b>${m[0]}</b><small>${m[1]}</small>`; b.classList.add('show'); clearTimeout(S.bt); S.bt = setTimeout(() => b.classList.remove('show'), 2600); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; try { navigator.vibrate && navigator.vibrate(10); } catch {} }; }
+    const SAY = isSleep() ? [['هشش... نايم', 'ارجع بعد الصبح'], ['zzz', 'تصبح على خير']] : [['برافو عليك!', 'كل يوم درس صغير بيفرق'], ['إنت قدّها!', 'كمّل وهتحفظ أسرع'], ['فخور بيك', 'السلسلة مستنياك'], ['يلا بينا!', 'اضغط الزر الذهبي'], ['صباح الخير يا بطل!', 'النهارده يوم حلو للتعلم'], ['إنت شاطر جدًا', 'كل مرة بتبقى أحسن'], ['الغلطة عادي', 'بنتعلم منها، جرّب تاني'], ['خد نفس عميق', 'وبعدين نكمّل بهدوء'], ['ماتنساش تشرب مية', 'عشان تركّز أكتر'], ['كمّل يا بطل!', 'خطوة صغيرة كل يوم'], ['أنا معاك', 'هنتعلم سوا'], ['حلو أوي!', 'إنت بتتحسن بسرعة'], ['وقت راحة', 'ريّح عينيك دقيقتين'], ['ربنا يوفقك', 'وهتنجح بإذن الله'], ['عاوز تحفظ أسرع؟', 'اقرا بصوت عالي'], ['كل درس بيقرّبك', 'من هدفك خطوة']]; let si = Math.floor(Math.random() * 16);
+    ow.onclick = () => { ow.classList.remove('hop'); void ow.getBoundingClientRect(); ow.classList.add('hop'); const b = sc.querySelector('.hbub'); const m = SAY[si++ % SAY.length]; b.innerHTML = `<b>${m[0]}</b><small>${m[1]}</small>`; b.classList.add('show'); clearTimeout(S.bt); S.bt = setTimeout(() => b.classList.remove('show'), 4500); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; try { navigator.vibrate && navigator.vibrate(10); } catch {} }; }
   const cached = !!S.subs; let subs = S.subs || []; if (!cached) { try { subs = await loadSubs(); } catch { subs = S.subs || []; } }
   else loadSubs().then((n) => { if (S.tab === 'home' && JSON.stringify(n) !== JSON.stringify(subs)) renderHome(); }).catch(() => {});
   const box = document.getElementById('hbody'); if (!box || S.tab !== 'home') return;
@@ -1064,61 +1067,25 @@ async function mushafList(box) {
 }
 
 // ---------- build 32: القاموس (FreeDict eng-ara، GPL v2+) ----------
-const DK_IDX = ["a", "aureoles", "carpeting", "cryptic", "ega", "freewheels", "image-type", "lick", "muzzling", "pheasants", "recidivist", "separator", "submittal", "ultrared", "villager"];
-const DK = {};
-async function dkShard(w) {
-  let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= w) f = i;
-  if (!DK[f]) { const r = await fetch('dict' + (f + 1) + '.json?v=' + BUILD); if (!r.ok) throw new Error('dk'); DK[f] = await r.json(); }
-  return DK[f];
-}
+let DKC = null;
+async function dkLoad() { if (!DKC) { const r = await fetch('dict_common.json?v=' + BUILD); if (!r.ok) throw new Error('dk'); DKC = await r.json(); } return DKC; }
 function dkSpeak(w) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(w); u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u); } catch {} }
-const DK_N = [5239, 5976, 5959, 6100, 6119, 6117, 5872, 5693, 5696, 5609, 5840, 5864, 5804, 5077, 4457];
-const DK_PG = 40;
 function openDict() {
   const s = sheet('<div></div>'); s.classList.add('full', 'eng', 'dict');
-  const total = DK_N.reduce((a, b) => a + b, 0), pages = Math.ceil(total / DK_PG);
-  const L = 'abcdefghijklmnopqrstuvwxyz'.split('');
-  s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl">${I('x')}</button><h3>القاموس</h3><span></span></div><div class="qpscroll"><div class="dkbox"><input id="dq" dir="ltr" placeholder="دوّر على كلمة…" autocomplete="off" autocapitalize="none" spellcheck="false"></div><div id="dlet" class="dklet" dir="ltr">${L.map((c) => `<button data-l="${c}">${c.toUpperCase()}</button>`).join('')}</div><div id="dpg" class="dkpg"></div><div id="dres" class="dkres"></div><div id="dnav" class="dknav"></div><div class="mcr">القاموس من مشروع <a href="https://freedict.org/" target="_blank" rel="noopener">FreeDict</a> (English-Arabic، مصدره Arabeyes.org) بترخيص <a href="https://www.gnu.org/licenses/gpl-2.0.html" target="_blank" rel="noopener">GNU GPL v2 أو أحدث</a>. الملف اتحوّل واتقصّر (أول 3 معاني للكلمة). <a href="legal/FREEDICT-NOTICE.txt" target="_blank" rel="noopener">إشعار الترخيص والتعديلات والمصدر</a>.</div></div>`;
-  s.querySelector('#cl').onclick = () => { try { speechSynthesis.cancel(); } catch {} s.remove(); };
-  const q = s.querySelector('#dq'), res = s.querySelector('#dres'), nav = s.querySelector('#dnav'), pgEl = s.querySelector('#dpg'), sc = s.querySelector('.qpscroll');
-  let tk = 0, pos = { f: 0, i: 0 };
-  const rows = (D, keys) => keys.map((k) => `<div class="dkr"><button class="dks" data-w="${esc(k)}" aria-label="نطق">${I('play', 'fillw')}</button><div class="dkw" dir="ltr">${esc(k)}</div><div class="dkm">${esc(D[k])}</div></div>`).join('');
-  const bindSpk = () => res.querySelectorAll('.dks').forEach((b) => (b.onclick = () => dkSpeak(b.dataset.w)));
-  const cum = (f) => DK_N.slice(0, f).reduce((a, b) => a + b, 0);
-  const book = async () => {
-    const my = ++tk; res.innerHTML = '<div class="empty">…</div>';
-    let D; try { D = await dkShard(DK_IDX[pos.f]); } catch { res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
-    if (my !== tk) return;
-    const keys = Object.keys(D), part = keys.slice(pos.i, pos.i + DK_PG), g = cum(pos.f) + pos.i;
-    res.innerHTML = rows(D, part); bindSpk(); sc.scrollTop = 0;
-    const lt = part[0] ? part[0][0] : '';
-    s.querySelectorAll('#dlet button').forEach((b) => b.classList.toggle('on', b.dataset.l === lt));
-    pgEl.textContent = `صفحة ${arN(Math.floor(g / DK_PG) + 1)} من ${arN(pages)} · ${part[0] || ''} ← ${part[part.length - 1] || ''}`;
-    nav.innerHTML = `<button id="dnx" ${g + DK_PG >= total ? 'disabled' : ''}>التالي ›</button><button id="dpv" ${g <= 0 ? 'disabled' : ''}>‹ السابق</button>`;
-    nav.querySelector('#dnx').onclick = () => { pos.i += DK_PG; if (pos.i >= keys.length) { pos = { f: pos.f + 1, i: 0 }; } book(); };
-    nav.querySelector('#dpv').onclick = async () => { if (pos.i - DK_PG >= 0) pos.i -= DK_PG; else if (pos.f > 0) { const pf = pos.f - 1; const n = DK_N[pf]; pos = { f: pf, i: Math.max(0, n - DK_PG) }; } else pos.i = 0; book(); };
-  };
-  const jump = async (c) => {
-    let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= c) f = i;
-    let D; try { D = await dkShard(DK_IDX[f]); } catch { return; }
-    let i = Object.keys(D).findIndex((k) => k >= c); if (i < 0 && f < DK_IDX.length - 1) { f++; i = 0; } pos = { f, i: Math.max(0, i) }; q.value = ''; book();
-  };
-  s.querySelectorAll('#dlet button').forEach((b) => (b.onclick = () => jump(b.dataset.l)));
-  let tx = 0; sc.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
-  sc.addEventListener('touchend', (e) => { if (q.value.trim()) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 90) { const b = nav.querySelector(d < 0 ? '#dnx' : '#dpv'); if (b && !b.disabled) b.click(); } }, { passive: true });
-  q.oninput = async () => {
-    const w = q.value.trim().toLowerCase(), my = ++tk;
-    if (!w) { s.querySelector('#dlet').hidden = false; pgEl.hidden = false; book(); return; }
-    s.querySelector('#dlet').hidden = true; pgEl.hidden = true; nav.innerHTML = '';
-    if (!/^[a-z][a-z'\-]*$/.test(w)) { res.innerHTML = '<div class="empty">اكتب بحروف إنجليزي بس</div>'; return; }
-    let D; try { let f = 0; for (let i = 0; i < DK_IDX.length; i++) if (DK_IDX[i] <= w) f = i; D = await dkShard(DK_IDX[f]); } catch { if (my === tk) res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; return; }
-    if (my !== tk) return;
-    const keys = Object.keys(D); const hit = D[w] ? [w] : []; const more = keys.filter((k) => k !== w && k.startsWith(w)).slice(0, 25 - hit.length);
-    const all = hit.concat(more);
-    if (!all.length) { res.innerHTML = '<div class="empty">مفيش الكلمة دي في القاموس</div>'; return; }
-    res.innerHTML = rows(D, all); bindSpk();
-  };
-  book();
+  s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl" aria-label="قفل">${I('x')}</button><h3>القاموس</h3><span></span></div><div class="qpscroll"><div class="dkbox"><input id="dq" dir="ltr" placeholder="دوّر على كلمة…" autocomplete="off" autocapitalize="none" spellcheck="false"><button class="dkchip" id="dbz">محاسبة</button></div><div id="dres" class="dkres"></div><div class="mcr">الكلمات الشائعة من قاموس FreeDict (English-Arabic، مصدره Arabeyes.org) بترخيص <a href="https://www.gnu.org/licenses/gpl-2.0.html" target="_blank" rel="noopener">GNU GPL v2 أو أحدث</a>. الملف اتحوّل واتقصّر (كلمات شائعة بس، وأول معنيين). مصطلحات المحاسبة والأعمال كُتبت يدويًا للتطبيق. <a href="legal/FREEDICT-NOTICE.txt" target="_blank" rel="noopener">إشعار الترخيص والتعديلات والمصدر</a>.</div></div>`;
+  s.querySelector('#cl').onclick = () => s.remove();
+  const q = s.querySelector('#dq'), res = s.querySelector('#dres'), sc = s.querySelector('.qpscroll'), bz = s.querySelector('#dbz');
+  let list = [], shown = 0, D = null, B = null, only = false;
+  const row = (k) => `<div class="dkr"><div class="dkw" dir="ltr">${esc(k)}</div><div class="dkm">${esc(D[k])}</div></div>`;
+  const more = () => { if (shown >= list.length) return; res.insertAdjacentHTML('beforeend', list.slice(shown, shown + 60).map(row).join('')); shown = Math.min(list.length, shown + 60); };
+  const fill = () => { const w = q.value.trim().toLowerCase(); const keys = only ? Object.keys(B) : Object.keys(D);
+    list = !w ? keys : keys.filter((k) => k.toLowerCase().startsWith(w)).concat(keys.filter((k) => !k.toLowerCase().startsWith(w) && k.toLowerCase().includes(w))); shown = 0; res.innerHTML = ''; sc.scrollTop = 0;
+    if (!list.length) { res.innerHTML = '<div class="empty">مفيش الكلمة دي</div>'; return; } more(); };
+  sc.addEventListener('scroll', () => { if (sc.scrollTop + sc.clientHeight > sc.scrollHeight - 600) more(); }, { passive: true });
+  q.oninput = () => { if (D) fill(); };
+  bz.onclick = () => { only = !only; bz.classList.toggle('on', only); if (D) fill(); };
+  res.innerHTML = '<div class="empty">…</div>';
+  dkLoad().then((d) => { B = d.b; D = Object.assign({}, d.d, d.b); const ks = Object.keys(D).sort((x, y) => (x.toLowerCase() < y.toLowerCase() ? -1 : 1)); const O = {}; ks.forEach((k) => (O[k] = D[k])); D = O; fill(); }).catch(() => { res.innerHTML = '<div class="empty">مقدرتش أحمّل القاموس، جرّب تاني</div>'; });
 }
 // ---------- build 30: صفحة القراءة (شكل صفحة المصحف) ----------
 const BSM = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
@@ -1487,6 +1454,67 @@ function sheet(html) {
   document.body.appendChild(s); ovSync(); return s;
 }
 function ovSync() { document.body.classList.toggle('ov', !!document.querySelector('.sheet:not(.out)')); }
+
+/* ===== مواقيت الصلاة: حساب محلي بالكامل (من غير إنترنت ولا تتبع). طريقة الهيئة المصرية العامة للمساحة: الفجر 19.5° والعشاء 17.5° ===== */
+const PR_CITIES = [['القاهرة', 30.0444, 31.2357], ['الجيزة', 30.0131, 31.2089], ['الإسكندرية', 31.2001, 29.9187], ['بورسعيد', 31.2653, 32.3019], ['السويس', 29.9668, 32.5498], ['الإسماعيلية', 30.5965, 32.2715], ['المنصورة', 31.0409, 31.3785], ['طنطا', 30.7865, 31.0004], ['الزقازيق', 30.5877, 31.5020], ['دمياط', 31.4165, 31.8133], ['الفيوم', 29.3084, 30.8428], ['بني سويف', 29.0661, 31.0994], ['المنيا', 28.1099, 30.7503], ['أسيوط', 27.1809, 31.1837], ['سوهاج', 26.5591, 31.6957], ['قنا', 26.1551, 32.7160], ['الأقصر', 25.6872, 32.6396], ['أسوان', 24.0889, 32.8998], ['الغردقة', 27.2579, 33.8116], ['شرم الشيخ', 27.9158, 34.3300], ['مرسى مطروح', 31.3543, 27.2373], ['العريش', 31.1316, 33.7984]];
+const PR_NAMES = ['الفجر', 'الشروق', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
+function prayTimes(y, mo, d, lat, lng) {
+  const R = Math.PI / 180, fx = (a, b) => a - b * Math.floor(a / b);
+  const jd = Date.UTC(y, mo - 1, d, 12) / 864e5 + 2440587.5, D = jd - 2451545;
+  const g = fx(357.529 + 0.98560028 * D, 360), q = fx(280.459 + 0.98564736 * D, 360);
+  const L = fx(q + 1.915 * Math.sin(g * R) + 0.020 * Math.sin(2 * g * R), 360), e = 23.439 - 0.00000036 * D;
+  const RA = fx(Math.atan2(Math.cos(e * R) * Math.sin(L * R), Math.cos(L * R)) / R / 15, 24);
+  const dec = Math.asin(Math.sin(e * R) * Math.sin(L * R)) / R, eqt = q / 15 - RA;
+  const noon = 12 - lng / 15 - eqt;
+  const ang = (a) => { const c = (-Math.sin(a * R) - Math.sin(dec * R) * Math.sin(lat * R)) / (Math.cos(dec * R) * Math.cos(lat * R)); return Math.acos(Math.max(-1, Math.min(1, c))) / R / 15; };
+  const asrA = -Math.atan(1 / (1 + Math.tan(Math.abs(lat - dec) * R))) / R;
+  const h = [noon - ang(19.5), noon - ang(0.833), noon, noon + ang(asrA), noon + ang(0.833), noon + ang(17.5)];
+  const base = Date.UTC(y, mo - 1, d);
+  return h.map((x) => new Date(Math.round((base + x * 36e5) / 6e4) * 6e4));
+}
+function prayState(lat, lng, tz, now) {
+  const f = (dt) => { const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(dt).reduce((o, x) => (o[x.type] = +x.value, o), {}); return p; };
+  const t = f(now), day = prayTimes(t.year, t.month, t.day, lat, lng);
+  const nx = f(new Date(Date.UTC(t.year, t.month - 1, t.day) + 864e5 + 12 * 36e5)), tmr = prayTimes(nx.year, nx.month, nx.day, lat, lng);
+  const idx = [0, 2, 3, 4, 5]; let next = -1;
+  for (const i of idx) if (day[i] > now) { next = i; break; }
+  let nt = next >= 0 ? day[next] : tmr[0]; if (next < 0) next = 0;
+  let cur = -1; for (let i = 0; i < 6; i++) if (day[i] <= now) cur = i;
+  return { day, next, nt, cur };
+}
+function prFmt(dt, tz) {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).formatToParts(dt).reduce((o, x) => (o[x.type] = x.value, o), {});
+  const h = +p.hour; return { t: ((h + 11) % 12 + 1) + ':' + p.minute, ap: h < 12 ? 'ص' : 'م' };
+}
+function openPray() {
+  const s = sheet('<div></div>'); s.classList.add('full', 'pry');
+  let ci = +(localStorage.getItem('pcity') || 0); if (!(ci >= 0 && ci < PR_CITIES.length)) ci = 0;
+  const two = (n) => String(n).padStart(2, '0');
+  const theme = (st) => (st.cur === -1 || st.cur === 5 ? 'night' : st.cur === 0 ? 'dawn' : st.cur === 4 ? 'dusk' : st.cur === 3 ? 'dusk' : 'day');
+  let st, tz = 'Africa/Cairo', lastNext = null, picker = false;
+  const draw = () => {
+    const c = PR_CITIES[ci]; st = prayState(c[1], c[2], tz, new Date()); lastNext = st.nt.getTime();
+    s.querySelector('.in').className = 'in t-' + theme(st);
+    const nf = prFmt(st.nt, tz);
+    s.querySelector('.in').innerHTML = `<div class="qhd w"><button class="rdb xb" id="cl" aria-label="قفل">${I('x')}</button><h3>مواقيت الصلاة</h3><button class="pcity" id="pc">${esc(c[0])} ▾</button></div>
+    <div class="prscroll"><div class="orb"></div>
+    <div class="phero"><small>الصلاة الجاية</small><h2>${PR_NAMES[st.next]}</h2><div class="pcd" id="pcd" dir="ltr">00:00:00</div><div class="pat">الساعة <b dir="ltr">${nf.t}</b> ${nf.ap}</div></div>
+    <div class="plist">${st.day.map((d, i) => { const f = prFmt(d, tz); return `<div class="pz${i === st.next ? ' pzn' : ''}${i === 1 ? ' pzs' : ''}${d <= new Date() && i !== st.next ? ' pzp' : ''}"><span class="pzl">${PR_NAMES[i]}</span><span class="pzt" dir="ltr">${f.t}<small>${f.ap}</small></span></div>`; }).join('')}</div>
+    <div class="pnote">الحساب بطريقة الهيئة المصرية العامة للمساحة (الفجر ١٩٫٥° والعشاء ١٧٫٥°) محسوب جوّه التطبيق من غير إنترنت. ممكن يختلف دقيقة أو اتنين عن نتيجة المسجد، فاعتمد على مواقيت مسجدك.</div></div>
+    <div class="pcp" id="pcp" hidden><div class="pcg">${PR_CITIES.map((x, i) => `<button data-i="${i}" class="${i === ci ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>`.replace('١٩٫٥', '19.5').replace('١٧٫٥', '17.5');
+    s.querySelector('#cl').onclick = () => s.remove();
+    const pcp = s.querySelector('#pcp');
+    s.querySelector('#pc').onclick = () => { pcp.hidden = !pcp.hidden; };
+    pcp.querySelectorAll('button').forEach((b) => (b.onclick = () => { ci = +b.dataset.i; localStorage.setItem('pcity', ci); draw(); }));
+    cd();
+  };
+  const cd = () => {
+    if (!s.isConnected || s.classList.contains('out')) return clearInterval(s._t);
+    let ms = st.nt - Date.now(); if (ms <= 0) return draw();
+    const sec = Math.floor(ms / 1e3), el = s.querySelector('#pcd'); if (el) el.textContent = two(Math.floor(sec / 3600)) + ':' + two(Math.floor(sec % 3600 / 60)) + ':' + two(sec % 60);
+  };
+  draw(); s._t = setInterval(cd, 1000);
+}
 
 function addSheet() {
   const s = sheet(`<h3>إضافة جهة اتصال</h3>
